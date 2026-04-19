@@ -84,6 +84,7 @@ export function ScreenDiagnosticsDialog({ screen, open, onOpenChange }: Props) {
     "idle" | "waiting" | "ready"
   >("idle");
   const [pendingCmd, setPendingCmd] = useState<string | null>(null);
+  const [localPaused, setLocalPaused] = useState<boolean | null>(null);
   const screenshotPollRef = useRef<number | null>(null);
   const lastShotAtRef = useRef<number>(0);
 
