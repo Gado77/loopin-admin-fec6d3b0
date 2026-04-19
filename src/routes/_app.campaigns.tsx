@@ -14,6 +14,8 @@ import {
   Calendar,
   Building2,
   Loader2,
+  Video,
+  EyeOff,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
