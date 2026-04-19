@@ -14,6 +14,8 @@ import {
   Calendar,
   Building2,
   Loader2,
+  Video,
+  EyeOff,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
@@ -104,6 +106,16 @@ function CampaignsPage() {
   const [data, setData] = useState<WizardData>(initialWizard);
   const [submitting, setSubmitting] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [mobilePreviewIds, setMobilePreviewIds] = useState<Set<string>>(new Set());
+
+  const toggleMobilePreview = (id: string) => {
+    setMobilePreviewIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   const campaignsQuery = useQuery({
     queryKey: ["campaigns", userId],
@@ -245,11 +257,19 @@ function CampaignsPage() {
         />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {(campaignsQuery.data ?? []).map((c) => (
+          {(campaignsQuery.data ?? []).map((c) => {
+            const showOnMobile = mobilePreviewIds.has(c.id);
+            const isVideo = c.media_url ? /\.(mp4|webm|mov)$/i.test(c.media_url) : false;
+            return (
             <Card key={c.id} className="overflow-hidden transition-shadow hover:shadow-soft">
               {c.media_url && (
-                <div className="aspect-video w-full overflow-hidden bg-muted">
-                  {/\.(mp4|webm|mov)$/i.test(c.media_url) ? (
+                <div
+                  className={cn(
+                    "aspect-video w-full overflow-hidden bg-muted",
+                    showOnMobile ? "block" : "hidden sm:block",
+                  )}
+                >
+                  {isVideo ? (
                     <video src={c.media_url} className="h-full w-full object-cover" muted />
                   ) : (
                     <img
@@ -286,11 +306,30 @@ function CampaignsPage() {
                     Fim
                   </div>
                 </div>
-                <div className="mt-4 flex justify-end gap-2">
+                <div className="mt-4 flex items-center justify-between gap-2">
+                  {c.media_url ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="sm:hidden"
+                      onClick={() => toggleMobilePreview(c.id)}
+                      aria-label={showOnMobile ? "Ocultar mídia" : "Ver mídia"}
+                    >
+                      {showOnMobile ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : isVideo ? (
+                        <Video className="h-4 w-4" />
+                      ) : (
+                        <ImageIcon className="h-4 w-4" />
+                      )}
+                    </Button>
+                  ) : (
+                    <span className="sm:hidden" />
+                  )}
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="text-destructive hover:text-destructive"
+                    className="ml-auto text-destructive hover:text-destructive"
                     onClick={() => setDeleteId(c.id)}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
@@ -298,7 +337,8 @@ function CampaignsPage() {
                 </div>
               </CardContent>
             </Card>
-          ))}
+            );
+          })}
         </div>
       )}
 
