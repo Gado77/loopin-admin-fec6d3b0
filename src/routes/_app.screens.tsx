@@ -80,6 +80,7 @@ const ORIENTATION_LABELS: Record<Orientation, string> = {
 
 interface ScreenFormData {
   name: string;
+  device_id: string;
   location_id: string;
   active_playlist_id: string;
   orientation: Orientation;
@@ -88,6 +89,7 @@ interface ScreenFormData {
 
 const emptyForm: ScreenFormData = {
   name: "",
+  device_id: "",
   location_id: "",
   active_playlist_id: "",
   orientation: "landscape",
@@ -146,6 +148,7 @@ function ScreensPage() {
 
   const saveMutation = useMutation({
     mutationFn: async (input: ScreenFormData & { id?: string }) => {
+      const device_id = input.device_id.trim().toUpperCase();
       const payload = {
         name: input.name.trim(),
         location_id: input.location_id || null,
@@ -156,19 +159,32 @@ function ScreensPage() {
       if (input.id) {
         const { error } = await supabase
           .from("screens")
-          .update(payload)
+          .update({ ...payload, device_id })
           .eq("id", input.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase
+        // Verifica se device_id já existe
+        const { data: existing, error: checkErr } = await supabase
           .from("screens")
-          .insert({ ...payload, user_id: userId, status: "offline" });
+          .select("id")
+          .eq("device_id", device_id)
+          .limit(1);
+        if (checkErr) throw checkErr;
+        if (existing && existing.length > 0) {
+          throw new Error("Este código de tela já está cadastrado");
+        }
+        const { error } = await supabase.from("screens").insert({
+          ...payload,
+          device_id,
+          user_id: userId,
+          status: "offline",
+        });
         if (error) throw error;
       }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["screens", userId] });
-      toast.success(editing ? "Tela atualizada" : "Tela criada");
+      toast.success(editing ? "Tela atualizada" : "Tela vinculada com sucesso");
       setDialogOpen(false);
       setEditing(null);
       setForm(emptyForm);
