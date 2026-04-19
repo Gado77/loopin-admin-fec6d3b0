@@ -315,7 +315,14 @@ function ScreensPage() {
                     </p>
                   )}
 
-                  <div className="mt-4 flex justify-end gap-2">
+                  <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => setDiagnosticsScreen(s)}
+                    >
+                      <Activity className="mr-1.5 h-3.5 w-3.5" /> Diagnóstico
+                    </Button>
                     <Button variant="outline" size="sm" onClick={() => openEdit(s)}>
                       <Pencil className="mr-1.5 h-3.5 w-3.5" /> Editar
                     </Button>
