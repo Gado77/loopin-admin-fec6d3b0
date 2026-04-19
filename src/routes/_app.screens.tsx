@@ -215,6 +215,7 @@ function ScreensPage() {
     setEditing(s);
     setForm({
       name: s.name,
+      device_id: s.device_id ?? "",
       location_id: s.location_id ?? "",
       active_playlist_id: s.active_playlist_id ?? "",
       orientation: (s.orientation as Orientation) ?? "landscape",
