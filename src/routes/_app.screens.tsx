@@ -239,6 +239,12 @@ function ScreensPage() {
   const isOnline = (lastPing: string | null) =>
     !!lastPing && Date.now() - new Date(lastPing).getTime() < 2 * 60 * 1000;
 
+  // Mantém os dados do modal de diagnóstico sempre sincronizados
+  const liveDiagnosticsScreen = diagnosticsScreen
+    ? ((screensQuery.data ?? []).find((s) => s.id === diagnosticsScreen.id) ??
+      diagnosticsScreen)
+    : null;
+
   return (
     <>
       <PageHeader
