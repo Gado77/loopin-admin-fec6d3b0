@@ -61,8 +61,12 @@ interface Screen {
   active_playlist_id: string | null;
   orientation: string | null;
   is_muted: boolean | null;
+  is_paused: boolean | null;
   status: string | null;
   last_ping: string | null;
+  current_content: string | null;
+  playlist_items_count: number | null;
+  cache_used_mb: number | null;
   locations?: { name: string } | null;
   playlists?: { name: string } | null;
 }
