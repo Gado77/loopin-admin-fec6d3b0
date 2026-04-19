@@ -94,6 +94,7 @@ export function ScreenDiagnosticsDialog({ screen, open, onOpenChange }: Props) {
       setScreenshotUrl(null);
       setScreenshotStatus("idle");
       setLogsOpen(false);
+      setLocalPaused(null);
       if (screenshotPollRef.current) {
         clearInterval(screenshotPollRef.current);
         screenshotPollRef.current = null;
@@ -109,7 +110,7 @@ export function ScreenDiagnosticsDialog({ screen, open, onOpenChange }: Props) {
   );
 
   const online = screen ? isOnline(screen.last_ping) : false;
-  const isPaused = !!screen?.is_paused;
+  const isPaused = localPaused ?? !!screen?.is_paused;
   const cacheUsed = screen?.cache_used_mb ?? 0;
   const cachePct = Math.min(100, Math.round((cacheUsed / CACHE_LIMIT_MB) * 100));
 
