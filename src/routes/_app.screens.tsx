@@ -9,6 +9,7 @@ import {
   Search,
   Wifi,
   WifiOff,
+  Activity,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
