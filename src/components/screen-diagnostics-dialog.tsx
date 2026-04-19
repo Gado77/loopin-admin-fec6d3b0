@@ -135,13 +135,18 @@ export function ScreenDiagnosticsDialog({ screen, open, onOpenChange }: Props) {
 
   const handleTogglePause = async () => {
     if (!screen) return;
-    const cmd = isPaused ? "resume" : "pause";
+    const newPaused = !isPaused;
+    const cmd = newPaused ? "pause" : "resume";
     await sendCommand(cmd);
-    // Atualização otimista
-    qc.setQueryData<DiagnosticsScreen[] | undefined>(
-      ["screens"],
-      (old) => old, // dummy — invalidate instead
-    );
+    // Persiste o novo estado para que o botão reflita imediatamente
+    const { error } = await supabase
+      .from("screens")
+      .update({ is_paused: newPaused })
+      .eq("id", screen.id);
+    if (error) {
+      toast.error("Não foi possível atualizar o estado da tela");
+      return;
+    }
     qc.invalidateQueries({ queryKey: ["screens"] });
   };
 
