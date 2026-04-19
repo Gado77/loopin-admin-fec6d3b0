@@ -9,6 +9,7 @@ import {
   Search,
   Wifi,
   WifiOff,
+  Activity,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
@@ -45,6 +46,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { ScreenDiagnosticsDialog } from "@/components/screen-diagnostics-dialog";
 
 export const Route = createFileRoute("/_app/screens")({
   component: ScreensPage,
@@ -59,8 +61,12 @@ interface Screen {
   active_playlist_id: string | null;
   orientation: string | null;
   is_muted: boolean | null;
+  is_paused: boolean | null;
   status: string | null;
   last_ping: string | null;
+  current_content: string | null;
+  playlist_items_count: number | null;
+  cache_used_mb: number | null;
   locations?: { name: string } | null;
   playlists?: { name: string } | null;
 }
@@ -106,9 +112,11 @@ function ScreensPage() {
   const [editing, setEditing] = useState<Screen | null>(null);
   const [form, setForm] = useState<ScreenFormData>(emptyForm);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [diagnosticsScreen, setDiagnosticsScreen] = useState<Screen | null>(null);
 
   const screensQuery = useQuery({
     queryKey: ["screens", userId],
+    refetchInterval: 30_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("screens")
@@ -231,6 +239,12 @@ function ScreensPage() {
   const isOnline = (lastPing: string | null) =>
     !!lastPing && Date.now() - new Date(lastPing).getTime() < 2 * 60 * 1000;
 
+  // Mantém os dados do modal de diagnóstico sempre sincronizados
+  const liveDiagnosticsScreen = diagnosticsScreen
+    ? ((screensQuery.data ?? []).find((s) => s.id === diagnosticsScreen.id) ??
+      diagnosticsScreen)
+    : null;
+
   return (
     <>
       <PageHeader
@@ -307,7 +321,14 @@ function ScreensPage() {
                     </p>
                   )}
 
-                  <div className="mt-4 flex justify-end gap-2">
+                  <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => setDiagnosticsScreen(s)}
+                    >
+                      <Activity className="mr-1.5 h-3.5 w-3.5" /> Diagnóstico
+                    </Button>
                     <Button variant="outline" size="sm" onClick={() => openEdit(s)}>
                       <Pencil className="mr-1.5 h-3.5 w-3.5" /> Editar
                     </Button>
@@ -518,6 +539,12 @@ function ScreensPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ScreenDiagnosticsDialog
+        screen={liveDiagnosticsScreen}
+        open={!!diagnosticsScreen}
+        onOpenChange={(o) => !o && setDiagnosticsScreen(null)}
+      />
     </>
   );
 }
