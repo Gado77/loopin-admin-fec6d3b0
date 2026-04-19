@@ -539,6 +539,12 @@ function ScreensPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ScreenDiagnosticsDialog
+        screen={liveDiagnosticsScreen}
+        open={!!diagnosticsScreen}
+        onOpenChange={(o) => !o && setDiagnosticsScreen(null)}
+      />
     </>
   );
 }
