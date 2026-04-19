@@ -9,8 +9,6 @@ import {
   Search,
   Wifi,
   WifiOff,
-  Copy,
-  Check,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
@@ -67,13 +65,25 @@ interface Screen {
   playlists?: { name: string } | null;
 }
 
+type Orientation =
+  | "landscape"
+  | "portrait"
+  | "landscape_inverted"
+  | "portrait_inverted";
+
+const ORIENTATION_LABELS: Record<Orientation, string> = {
+  landscape: "Horizontal",
+  portrait: "Vertical",
+  landscape_inverted: "Horizontal invertida",
+  portrait_inverted: "Vertical invertida",
+};
+
 interface ScreenFormData {
   name: string;
   location_id: string;
   active_playlist_id: string;
-  orientation: "landscape" | "portrait";
+  orientation: Orientation;
   is_muted: boolean;
-  device_id: string;
 }
 
 const emptyForm: ScreenFormData = {
@@ -82,12 +92,7 @@ const emptyForm: ScreenFormData = {
   active_playlist_id: "",
   orientation: "landscape",
   is_muted: false,
-  device_id: "",
 };
-
-function genDeviceId() {
-  return Math.random().toString(36).slice(2, 8).toUpperCase();
-}
 
 function ScreensPage() {
   const { user } = useAuth();
@@ -99,7 +104,6 @@ function ScreensPage() {
   const [editing, setEditing] = useState<Screen | null>(null);
   const [form, setForm] = useState<ScreenFormData>(emptyForm);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [copied, setCopied] = useState<string | null>(null);
 
   const screensQuery = useQuery({
     queryKey: ["screens", userId],
@@ -148,7 +152,6 @@ function ScreensPage() {
         active_playlist_id: input.active_playlist_id || null,
         orientation: input.orientation,
         is_muted: input.is_muted,
-        device_id: input.device_id || genDeviceId(),
       };
       if (input.id) {
         const { error } = await supabase
@@ -188,7 +191,7 @@ function ScreensPage() {
 
   const openCreate = () => {
     setEditing(null);
-    setForm({ ...emptyForm, device_id: genDeviceId() });
+    setForm(emptyForm);
     setDialogOpen(true);
   };
 
@@ -198,9 +201,8 @@ function ScreensPage() {
       name: s.name,
       location_id: s.location_id ?? "",
       active_playlist_id: s.active_playlist_id ?? "",
-      orientation: (s.orientation as "landscape" | "portrait") ?? "landscape",
+      orientation: (s.orientation as Orientation) ?? "landscape",
       is_muted: !!s.is_muted,
-      device_id: s.device_id ?? genDeviceId(),
     });
     setDialogOpen(true);
   };
@@ -212,18 +214,11 @@ function ScreensPage() {
   const isOnline = (lastPing: string | null) =>
     !!lastPing && Date.now() - new Date(lastPing).getTime() < 2 * 60 * 1000;
 
-  const copyCode = async (code: string) => {
-    await navigator.clipboard.writeText(code);
-    setCopied(code);
-    toast.success("Código copiado");
-    setTimeout(() => setCopied(null), 2000);
-  };
-
   return (
     <>
       <PageHeader
         title="Telas"
-        description="Cadastre, monitore e pareie suas TVs e displays."
+        description="Cadastre e monitore suas TVs e displays."
         icon={MonitorPlay}
         action={
           <Button onClick={openCreate}>
@@ -253,7 +248,7 @@ function ScreensPage() {
           description={
             search
               ? "Tente outro termo de busca."
-              : "Cadastre sua primeira tela e gere o código de pareamento para ativá-la no player."
+              : "Cadastre sua primeira tela para começar a exibir conteúdo."
           }
           actionLabel={search ? undefined : "Cadastrar primeira tela"}
           onAction={search ? undefined : openCreate}
@@ -270,7 +265,7 @@ function ScreensPage() {
                       <h3 className="truncate text-base font-semibold">{s.name}</h3>
                       <p className="mt-0.5 truncate text-xs text-muted-foreground">
                         {s.locations?.name ?? "Sem local"} ·{" "}
-                        {s.orientation === "portrait" ? "Vertical" : "Horizontal"}
+                        {ORIENTATION_LABELS[(s.orientation as Orientation) ?? "landscape"]}
                       </p>
                     </div>
                     <Badge variant={online ? "default" : "secondary"} className="shrink-0">
@@ -283,36 +278,17 @@ function ScreensPage() {
                     </Badge>
                   </div>
 
-                  <div className="mt-4 rounded-lg border bg-muted/30 p-3">
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                      Código de pareamento
-                    </p>
-                    <div className="mt-1 flex items-center justify-between gap-2">
-                      <code className="font-mono text-base font-bold tracking-widest text-primary">
-                        {s.device_id ?? "—"}
-                      </code>
-                      {s.device_id && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => copyCode(s.device_id!)}
-                        >
-                          {copied === s.device_id ? (
-                            <Check className="h-4 w-4 text-success" />
-                          ) : (
-                            <Copy className="h-4 w-4" />
-                          )}
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-
-                  <p className="mt-3 text-xs text-muted-foreground">
+                  <p className="mt-4 text-xs text-muted-foreground">
                     Playlist:{" "}
                     <span className="font-medium text-foreground">
                       {s.playlists?.name ?? "Nenhuma"}
                     </span>
                   </p>
+                  {s.device_id && (
+                    <p className="mt-1 font-mono text-[11px] text-muted-foreground/70">
+                      {s.device_id}
+                    </p>
+                  )}
 
                   <div className="mt-4 flex justify-end gap-2">
                     <Button variant="outline" size="sm" onClick={() => openEdit(s)}>
@@ -340,8 +316,8 @@ function ScreensPage() {
           <DialogHeader>
             <DialogTitle>{editing ? "Editar tela" : "Nova tela"}</DialogTitle>
             <DialogDescription>
-              Defina nome, local e playlist. O código de pareamento é gerado
-              automaticamente.
+              Defina nome, local, playlist e orientação. O código de pareamento
+              é gerado pelo player na TV.
             </DialogDescription>
           </DialogHeader>
 
@@ -417,12 +393,12 @@ function ScreensPage() {
                 </Select>
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-2 sm:col-span-2">
                 <Label>Orientação</Label>
                 <Select
                   value={form.orientation}
                   onValueChange={(v) =>
-                    setForm((f) => ({ ...f, orientation: v as "landscape" | "portrait" }))
+                    setForm((f) => ({ ...f, orientation: v as Orientation }))
                   }
                 >
                   <SelectTrigger>
@@ -431,19 +407,27 @@ function ScreensPage() {
                   <SelectContent>
                     <SelectItem value="landscape">Horizontal</SelectItem>
                     <SelectItem value="portrait">Vertical</SelectItem>
+                    <SelectItem value="landscape_inverted">
+                      Horizontal invertida
+                    </SelectItem>
+                    <SelectItem value="portrait_inverted">
+                      Vertical invertida
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-
-              <div className="space-y-2">
-                <Label>Código de pareamento</Label>
-                <Input
-                  value={form.device_id}
-                  readOnly
-                  className="font-mono tracking-widest"
-                />
-              </div>
             </div>
+
+            {editing?.device_id && (
+              <div className="rounded-md border bg-muted/20 px-3 py-2">
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  Código de pareamento
+                </p>
+                <code className="font-mono text-xs text-muted-foreground">
+                  {editing.device_id}
+                </code>
+              </div>
+            )}
 
             <div className="flex items-center justify-between rounded-lg border bg-muted/30 p-3">
               <div>
