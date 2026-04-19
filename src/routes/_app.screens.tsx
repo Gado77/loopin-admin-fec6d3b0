@@ -80,6 +80,7 @@ const ORIENTATION_LABELS: Record<Orientation, string> = {
 
 interface ScreenFormData {
   name: string;
+  device_id: string;
   location_id: string;
   active_playlist_id: string;
   orientation: Orientation;
@@ -88,6 +89,7 @@ interface ScreenFormData {
 
 const emptyForm: ScreenFormData = {
   name: "",
+  device_id: "",
   location_id: "",
   active_playlist_id: "",
   orientation: "landscape",
@@ -146,6 +148,7 @@ function ScreensPage() {
 
   const saveMutation = useMutation({
     mutationFn: async (input: ScreenFormData & { id?: string }) => {
+      const device_id = input.device_id.trim().toUpperCase();
       const payload = {
         name: input.name.trim(),
         location_id: input.location_id || null,
@@ -156,19 +159,32 @@ function ScreensPage() {
       if (input.id) {
         const { error } = await supabase
           .from("screens")
-          .update(payload)
+          .update({ ...payload, device_id })
           .eq("id", input.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase
+        // Verifica se device_id já existe
+        const { data: existing, error: checkErr } = await supabase
           .from("screens")
-          .insert({ ...payload, user_id: userId, status: "offline" });
+          .select("id")
+          .eq("device_id", device_id)
+          .limit(1);
+        if (checkErr) throw checkErr;
+        if (existing && existing.length > 0) {
+          throw new Error("Este código de tela já está cadastrado");
+        }
+        const { error } = await supabase.from("screens").insert({
+          ...payload,
+          device_id,
+          user_id: userId,
+          status: "offline",
+        });
         if (error) throw error;
       }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["screens", userId] });
-      toast.success(editing ? "Tela atualizada" : "Tela criada");
+      toast.success(editing ? "Tela atualizada" : "Tela vinculada com sucesso");
       setDialogOpen(false);
       setEditing(null);
       setForm(emptyForm);
@@ -199,6 +215,7 @@ function ScreensPage() {
     setEditing(s);
     setForm({
       name: s.name,
+      device_id: s.device_id ?? "",
       location_id: s.location_id ?? "",
       active_playlist_id: s.active_playlist_id ?? "",
       orientation: (s.orientation as Orientation) ?? "landscape",
@@ -316,8 +333,8 @@ function ScreensPage() {
           <DialogHeader>
             <DialogTitle>{editing ? "Editar tela" : "Nova tela"}</DialogTitle>
             <DialogDescription>
-              Defina nome, local, playlist e orientação. O código de pareamento
-              é gerado pelo player na TV.
+              Informe o código exibido na TV pelo aplicativo player para
+              vincular esta tela ao painel.
             </DialogDescription>
           </DialogHeader>
 
@@ -328,10 +345,38 @@ function ScreensPage() {
                 toast.error("Informe um nome");
                 return;
               }
+              if (!form.device_id.trim()) {
+                toast.error("Informe o código de pareamento");
+                return;
+              }
               saveMutation.mutate({ ...form, id: editing?.id });
             }}
             className="space-y-4"
           >
+            <div className="space-y-2">
+              <Label htmlFor="device_id">
+                Código de pareamento{" "}
+                <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="device_id"
+                value={form.device_id}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    device_id: e.target.value.toUpperCase(),
+                  }))
+                }
+                placeholder="TELA-XXXXXX"
+                className="font-mono tracking-widest uppercase"
+                disabled={!!editing}
+                maxLength={20}
+              />
+              <p className="text-xs text-muted-foreground">
+                Esse código aparece na tela do aplicativo Android instalado na TV.
+              </p>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="name">Nome da tela</Label>
               <Input
@@ -339,6 +384,7 @@ function ScreensPage() {
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                 placeholder="Ex.: Recepção – Loja 1"
+                maxLength={100}
               />
             </div>
 
@@ -418,16 +464,7 @@ function ScreensPage() {
               </div>
             </div>
 
-            {editing?.device_id && (
-              <div className="rounded-md border bg-muted/20 px-3 py-2">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                  Código de pareamento
-                </p>
-                <code className="font-mono text-xs text-muted-foreground">
-                  {editing.device_id}
-                </code>
-              </div>
-            )}
+            {/* device_id já visível no topo do formulário */}
 
             <div className="flex items-center justify-between rounded-lg border bg-muted/30 p-3">
               <div>
@@ -455,7 +492,7 @@ function ScreensPage() {
                   ? "Salvando…"
                   : editing
                     ? "Salvar alterações"
-                    : "Criar tela"}
+                    : "Vincular tela"}
               </Button>
             </DialogFooter>
           </form>
