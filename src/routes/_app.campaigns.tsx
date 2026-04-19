@@ -15,7 +15,7 @@ import {
   Building2,
   Loader2,
   Video,
-  EyeOff,
+  
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
@@ -106,16 +106,7 @@ function CampaignsPage() {
   const [data, setData] = useState<WizardData>(initialWizard);
   const [submitting, setSubmitting] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [mobilePreviewIds, setMobilePreviewIds] = useState<Set<string>>(new Set());
-
-  const toggleMobilePreview = (id: string) => {
-    setMobilePreviewIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
+  const [previewMedia, setPreviewMedia] = useState<{ url: string; isVideo: boolean; name: string } | null>(null);
 
   const campaignsQuery = useQuery({
     queryKey: ["campaigns", userId],
@@ -258,17 +249,11 @@ function CampaignsPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {(campaignsQuery.data ?? []).map((c) => {
-            const showOnMobile = mobilePreviewIds.has(c.id);
             const isVideo = c.media_url ? /\.(mp4|webm|mov)$/i.test(c.media_url) : false;
             return (
             <Card key={c.id} className="overflow-hidden transition-shadow hover:shadow-soft">
               {c.media_url && (
-                <div
-                  className={cn(
-                    "aspect-video w-full overflow-hidden bg-muted",
-                    showOnMobile ? "block" : "hidden sm:block",
-                  )}
-                >
+                <div className="hidden aspect-video w-full overflow-hidden bg-muted sm:block">
                   {isVideo ? (
                     <video src={c.media_url} className="h-full w-full object-cover" muted />
                   ) : (
@@ -312,12 +297,12 @@ function CampaignsPage() {
                       variant="ghost"
                       size="sm"
                       className="sm:hidden"
-                      onClick={() => toggleMobilePreview(c.id)}
-                      aria-label={showOnMobile ? "Ocultar mídia" : "Ver mídia"}
+                      onClick={() =>
+                        setPreviewMedia({ url: c.media_url!, isVideo, name: c.name })
+                      }
+                      aria-label="Ver mídia"
                     >
-                      {showOnMobile ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : isVideo ? (
+                      {isVideo ? (
                         <Video className="h-4 w-4" />
                       ) : (
                         <ImageIcon className="h-4 w-4" />
@@ -651,6 +636,32 @@ function CampaignsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={!!previewMedia} onOpenChange={(o) => !o && setPreviewMedia(null)}>
+        <DialogContent className="max-w-[95vw] border-0 bg-black p-0 sm:max-w-3xl">
+          <DialogHeader className="sr-only">
+            <DialogTitle>{previewMedia?.name ?? "Mídia"}</DialogTitle>
+          </DialogHeader>
+          {previewMedia && (
+            <div className="flex max-h-[85vh] w-full items-center justify-center">
+              {previewMedia.isVideo ? (
+                <video
+                  src={previewMedia.url}
+                  className="max-h-[85vh] w-full"
+                  controls
+                  autoPlay
+                />
+              ) : (
+                <img
+                  src={previewMedia.url}
+                  alt={previewMedia.name}
+                  className="max-h-[85vh] w-full object-contain"
+                />
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
