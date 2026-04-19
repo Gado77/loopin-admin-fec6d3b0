@@ -333,8 +333,8 @@ function ScreensPage() {
           <DialogHeader>
             <DialogTitle>{editing ? "Editar tela" : "Nova tela"}</DialogTitle>
             <DialogDescription>
-              Defina nome, local, playlist e orientação. O código de pareamento
-              é gerado pelo player na TV.
+              Informe o código exibido na TV pelo aplicativo player para
+              vincular esta tela ao painel.
             </DialogDescription>
           </DialogHeader>
 
@@ -345,10 +345,38 @@ function ScreensPage() {
                 toast.error("Informe um nome");
                 return;
               }
+              if (!form.device_id.trim()) {
+                toast.error("Informe o código de pareamento");
+                return;
+              }
               saveMutation.mutate({ ...form, id: editing?.id });
             }}
             className="space-y-4"
           >
+            <div className="space-y-2">
+              <Label htmlFor="device_id">
+                Código de pareamento{" "}
+                <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="device_id"
+                value={form.device_id}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    device_id: e.target.value.toUpperCase(),
+                  }))
+                }
+                placeholder="TELA-XXXXXX"
+                className="font-mono tracking-widest uppercase"
+                disabled={!!editing}
+                maxLength={20}
+              />
+              <p className="text-xs text-muted-foreground">
+                Esse código aparece na tela do aplicativo Android instalado na TV.
+              </p>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="name">Nome da tela</Label>
               <Input
@@ -356,6 +384,7 @@ function ScreensPage() {
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                 placeholder="Ex.: Recepção – Loja 1"
+                maxLength={100}
               />
             </div>
 
@@ -435,16 +464,7 @@ function ScreensPage() {
               </div>
             </div>
 
-            {editing?.device_id && (
-              <div className="rounded-md border bg-muted/20 px-3 py-2">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                  Código de pareamento
-                </p>
-                <code className="font-mono text-xs text-muted-foreground">
-                  {editing.device_id}
-                </code>
-              </div>
-            )}
+            {/* device_id já visível no topo do formulário */}
 
             <div className="flex items-center justify-between rounded-lg border bg-muted/30 p-3">
               <div>
