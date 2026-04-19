@@ -106,16 +106,7 @@ function CampaignsPage() {
   const [data, setData] = useState<WizardData>(initialWizard);
   const [submitting, setSubmitting] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [mobilePreviewIds, setMobilePreviewIds] = useState<Set<string>>(new Set());
-
-  const toggleMobilePreview = (id: string) => {
-    setMobilePreviewIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
+  const [previewMedia, setPreviewMedia] = useState<{ url: string; isVideo: boolean; name: string } | null>(null);
 
   const campaignsQuery = useQuery({
     queryKey: ["campaigns", userId],
