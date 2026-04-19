@@ -46,6 +46,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { ScreenDiagnosticsDialog } from "@/components/screen-diagnostics-dialog";
 
 export const Route = createFileRoute("/_app/screens")({
   component: ScreensPage,
