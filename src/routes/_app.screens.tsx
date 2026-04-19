@@ -112,9 +112,11 @@ function ScreensPage() {
   const [editing, setEditing] = useState<Screen | null>(null);
   const [form, setForm] = useState<ScreenFormData>(emptyForm);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [diagnosticsScreen, setDiagnosticsScreen] = useState<Screen | null>(null);
 
   const screensQuery = useQuery({
     queryKey: ["screens", userId],
+    refetchInterval: 30_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("screens")
