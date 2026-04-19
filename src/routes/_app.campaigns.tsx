@@ -249,17 +249,11 @@ function CampaignsPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {(campaignsQuery.data ?? []).map((c) => {
-            const showOnMobile = mobilePreviewIds.has(c.id);
             const isVideo = c.media_url ? /\.(mp4|webm|mov)$/i.test(c.media_url) : false;
             return (
             <Card key={c.id} className="overflow-hidden transition-shadow hover:shadow-soft">
               {c.media_url && (
-                <div
-                  className={cn(
-                    "aspect-video w-full overflow-hidden bg-muted",
-                    showOnMobile ? "block" : "hidden sm:block",
-                  )}
-                >
+                <div className="hidden aspect-video w-full overflow-hidden bg-muted sm:block">
                   {isVideo ? (
                     <video src={c.media_url} className="h-full w-full object-cover" muted />
                   ) : (
@@ -303,12 +297,12 @@ function CampaignsPage() {
                       variant="ghost"
                       size="sm"
                       className="sm:hidden"
-                      onClick={() => toggleMobilePreview(c.id)}
-                      aria-label={showOnMobile ? "Ocultar mídia" : "Ver mídia"}
+                      onClick={() =>
+                        setPreviewMedia({ url: c.media_url!, isVideo, name: c.name })
+                      }
+                      aria-label="Ver mídia"
                     >
-                      {showOnMobile ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : isVideo ? (
+                      {isVideo ? (
                         <Video className="h-4 w-4" />
                       ) : (
                         <ImageIcon className="h-4 w-4" />
