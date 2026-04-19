@@ -636,6 +636,32 @@ function CampaignsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={!!previewMedia} onOpenChange={(o) => !o && setPreviewMedia(null)}>
+        <DialogContent className="max-w-[95vw] border-0 bg-black p-0 sm:max-w-3xl">
+          <DialogHeader className="sr-only">
+            <DialogTitle>{previewMedia?.name ?? "Mídia"}</DialogTitle>
+          </DialogHeader>
+          {previewMedia && (
+            <div className="flex max-h-[85vh] w-full items-center justify-center">
+              {previewMedia.isVideo ? (
+                <video
+                  src={previewMedia.url}
+                  className="max-h-[85vh] w-full"
+                  controls
+                  autoPlay
+                />
+              ) : (
+                <img
+                  src={previewMedia.url}
+                  alt={previewMedia.name}
+                  className="max-h-[85vh] w-full object-contain"
+                />
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
