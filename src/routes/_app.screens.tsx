@@ -492,7 +492,7 @@ function ScreensPage() {
                   ? "Salvando…"
                   : editing
                     ? "Salvar alterações"
-                    : "Criar tela"}
+                    : "Vincular tela"}
               </Button>
             </DialogFooter>
           </form>
