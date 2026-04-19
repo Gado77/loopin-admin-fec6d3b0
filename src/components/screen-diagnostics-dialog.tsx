@@ -135,18 +135,10 @@ export function ScreenDiagnosticsDialog({ screen, open, onOpenChange }: Props) {
 
   const handleTogglePause = async () => {
     if (!screen) return;
-    const newPaused = !isPaused;
-    const cmd = newPaused ? "pause" : "resume";
+    const cmd = isPaused ? "resume" : "pause";
     await sendCommand(cmd);
-    // Persiste o novo estado para que o botão reflita imediatamente
-    const { error } = await supabase
-      .from("screens")
-      .update({ is_paused: newPaused })
-      .eq("id", screen.id);
-    if (error) {
-      toast.error("Não foi possível atualizar o estado da tela");
-      return;
-    }
+    // Alterna localmente para feedback imediato — o player atualiza o estado real.
+    setLocalPaused(!isPaused);
     qc.invalidateQueries({ queryKey: ["screens"] });
   };
 
