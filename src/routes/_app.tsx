@@ -19,6 +19,10 @@ import {
   Moon,
   Laptop,
   Tv2,
+  Building2,
+  MapPin,
+  Sparkles,
+  BarChart3,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
@@ -40,8 +44,12 @@ export const Route = createFileRoute("/_app")({
 const NAV = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/screens", label: "Telas", icon: MonitorPlay },
+  { to: "/locations", label: "Locais", icon: MapPin },
+  { to: "/advertisers", label: "Anunciantes", icon: Building2 },
   { to: "/playlists", label: "Playlists", icon: ListMusic },
   { to: "/campaigns", label: "Campanhas", icon: Megaphone },
+  { to: "/dynamic-content", label: "Conteúdo Dinâmico", icon: Sparkles },
+  { to: "/reports", label: "Relatórios", icon: BarChart3 },
   { to: "/settings", label: "Configurações", icon: SettingsIcon },
 ] as const;
 
