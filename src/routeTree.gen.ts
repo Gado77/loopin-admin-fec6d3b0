@@ -14,9 +14,13 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppSettingsRouteImport } from './routes/_app.settings'
 import { Route as AppScreensRouteImport } from './routes/_app.screens'
+import { Route as AppReportsRouteImport } from './routes/_app.reports'
 import { Route as AppPlaylistsRouteImport } from './routes/_app.playlists'
+import { Route as AppLocationsRouteImport } from './routes/_app.locations'
+import { Route as AppDynamicContentRouteImport } from './routes/_app.dynamic-content'
 import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
 import { Route as AppCampaignsRouteImport } from './routes/_app.campaigns'
+import { Route as AppAdvertisersRouteImport } from './routes/_app.advertisers'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -42,9 +46,24 @@ const AppScreensRoute = AppScreensRouteImport.update({
   path: '/screens',
   getParentRoute: () => AppRoute,
 } as any)
+const AppReportsRoute = AppReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppPlaylistsRoute = AppPlaylistsRouteImport.update({
   id: '/playlists',
   path: '/playlists',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppLocationsRoute = AppLocationsRouteImport.update({
+  id: '/locations',
+  path: '/locations',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDynamicContentRoute = AppDynamicContentRouteImport.update({
+  id: '/dynamic-content',
+  path: '/dynamic-content',
   getParentRoute: () => AppRoute,
 } as any)
 const AppDashboardRoute = AppDashboardRouteImport.update({
@@ -57,22 +76,35 @@ const AppCampaignsRoute = AppCampaignsRouteImport.update({
   path: '/campaigns',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAdvertisersRoute = AppAdvertisersRouteImport.update({
+  id: '/advertisers',
+  path: '/advertisers',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/advertisers': typeof AppAdvertisersRoute
   '/campaigns': typeof AppCampaignsRoute
   '/dashboard': typeof AppDashboardRoute
+  '/dynamic-content': typeof AppDynamicContentRoute
+  '/locations': typeof AppLocationsRoute
   '/playlists': typeof AppPlaylistsRoute
+  '/reports': typeof AppReportsRoute
   '/screens': typeof AppScreensRoute
   '/settings': typeof AppSettingsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/advertisers': typeof AppAdvertisersRoute
   '/campaigns': typeof AppCampaignsRoute
   '/dashboard': typeof AppDashboardRoute
+  '/dynamic-content': typeof AppDynamicContentRoute
+  '/locations': typeof AppLocationsRoute
   '/playlists': typeof AppPlaylistsRoute
+  '/reports': typeof AppReportsRoute
   '/screens': typeof AppScreensRoute
   '/settings': typeof AppSettingsRoute
 }
@@ -81,9 +113,13 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
+  '/_app/advertisers': typeof AppAdvertisersRoute
   '/_app/campaigns': typeof AppCampaignsRoute
   '/_app/dashboard': typeof AppDashboardRoute
+  '/_app/dynamic-content': typeof AppDynamicContentRoute
+  '/_app/locations': typeof AppLocationsRoute
   '/_app/playlists': typeof AppPlaylistsRoute
+  '/_app/reports': typeof AppReportsRoute
   '/_app/screens': typeof AppScreensRoute
   '/_app/settings': typeof AppSettingsRoute
 }
@@ -92,18 +128,26 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/login'
+    | '/advertisers'
     | '/campaigns'
     | '/dashboard'
+    | '/dynamic-content'
+    | '/locations'
     | '/playlists'
+    | '/reports'
     | '/screens'
     | '/settings'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/login'
+    | '/advertisers'
     | '/campaigns'
     | '/dashboard'
+    | '/dynamic-content'
+    | '/locations'
     | '/playlists'
+    | '/reports'
     | '/screens'
     | '/settings'
   id:
@@ -111,9 +155,13 @@ export interface FileRouteTypes {
     | '/'
     | '/_app'
     | '/login'
+    | '/_app/advertisers'
     | '/_app/campaigns'
     | '/_app/dashboard'
+    | '/_app/dynamic-content'
+    | '/_app/locations'
     | '/_app/playlists'
+    | '/_app/reports'
     | '/_app/screens'
     | '/_app/settings'
   fileRoutesById: FileRoutesById
@@ -161,11 +209,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppScreensRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/reports': {
+      id: '/_app/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof AppReportsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/playlists': {
       id: '/_app/playlists'
       path: '/playlists'
       fullPath: '/playlists'
       preLoaderRoute: typeof AppPlaylistsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/locations': {
+      id: '/_app/locations'
+      path: '/locations'
+      fullPath: '/locations'
+      preLoaderRoute: typeof AppLocationsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/dynamic-content': {
+      id: '/_app/dynamic-content'
+      path: '/dynamic-content'
+      fullPath: '/dynamic-content'
+      preLoaderRoute: typeof AppDynamicContentRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/dashboard': {
@@ -182,21 +251,36 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCampaignsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/advertisers': {
+      id: '/_app/advertisers'
+      path: '/advertisers'
+      fullPath: '/advertisers'
+      preLoaderRoute: typeof AppAdvertisersRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
 interface AppRouteChildren {
+  AppAdvertisersRoute: typeof AppAdvertisersRoute
   AppCampaignsRoute: typeof AppCampaignsRoute
   AppDashboardRoute: typeof AppDashboardRoute
+  AppDynamicContentRoute: typeof AppDynamicContentRoute
+  AppLocationsRoute: typeof AppLocationsRoute
   AppPlaylistsRoute: typeof AppPlaylistsRoute
+  AppReportsRoute: typeof AppReportsRoute
   AppScreensRoute: typeof AppScreensRoute
   AppSettingsRoute: typeof AppSettingsRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppAdvertisersRoute: AppAdvertisersRoute,
   AppCampaignsRoute: AppCampaignsRoute,
   AppDashboardRoute: AppDashboardRoute,
+  AppDynamicContentRoute: AppDynamicContentRoute,
+  AppLocationsRoute: AppLocationsRoute,
   AppPlaylistsRoute: AppPlaylistsRoute,
+  AppReportsRoute: AppReportsRoute,
   AppScreensRoute: AppScreensRoute,
   AppSettingsRoute: AppSettingsRoute,
 }
