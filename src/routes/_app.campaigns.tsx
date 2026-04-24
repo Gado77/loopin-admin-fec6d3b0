@@ -79,7 +79,7 @@ interface WizardData {
   previewUrl: string | null;
   name: string;
   duration_seconds: number;
-  priority: "low" | "normal" | "high";
+  priority: "gold" | "silver" | "bronze";
   start_date: string;
   end_date: string;
 }
