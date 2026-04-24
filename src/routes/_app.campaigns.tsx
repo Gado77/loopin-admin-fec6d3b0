@@ -516,9 +516,9 @@ function CampaignsPage() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="low">Baixa</SelectItem>
-                        <SelectItem value="normal">Normal</SelectItem>
-                        <SelectItem value="high">Alta</SelectItem>
+                        <SelectItem value="gold">🥇 Ouro</SelectItem>
+                        <SelectItem value="silver">🥈 Prata</SelectItem>
+                        <SelectItem value="bronze">🥉 Bronze</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
