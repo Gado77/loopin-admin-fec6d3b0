@@ -1,0 +1,16 @@
+name = "loopin-admin"
+compatibility_date = "2025-09-24"
+compatibility_flags = ["nodejs_compat"]
+main = "@tanstack/react-start/server-entry"
+
+[[observers]]
+name = "loopin-media-worker"
+path = "/media-worker/*"
+
+[[migrations]]
+
+[vars]
+OPENWEATHER_API_KEY = ""  # Preencha com sua chave da OpenWeather
+
+[env.production]
+vars = { OPENWEATHER_API_KEY = "" }

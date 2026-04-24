@@ -84,7 +84,7 @@ const empty: FormState = {
   name: "",
   content_type: "weather",
   is_active: true,
-  city: "São Paulo, BR",
+  city: "São José dos Pinhais, BR",
   weatherInterval: 30,
   newsCategory: "general",
   newsInterval: 60,
@@ -102,6 +102,25 @@ const TYPE_META: Record<
   ticker: { label: "Ticker", icon: Type, color: "bg-violet-500/10 text-violet-700 dark:text-violet-300" },
   html: { label: "HTML Custom", icon: Code2, color: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" },
 };
+
+const BRAZILIAN_CITIES = [
+  { value: "São José dos Pinhais, BR", label: "São José dos Pinhais - PR" },
+  { value: "São Paulo, BR", label: "São Paulo - SP" },
+  { value: "Rio de Janeiro, BR", label: "Rio de Janeiro - RJ" },
+  { value: "Belo Horizonte, BR", label: "Belo Horizonte - MG" },
+  { value: "Brasília, BR", label: "Brasília - DF" },
+  { value: "Salvador, BR", label: "Salvador - BA" },
+  { value: "Fortaleza, BR", label: "Fortaleza - CE" },
+  { value: "Recife, BR", label: "Recife - PE" },
+  { value: "Porto Alegre, BR", label: "Porto Alegre - RS" },
+  { value: "Curitiba, BR", label: "Curitiba - PR" },
+  { value: "Manaus, BR", label: "Manaus - AM" },
+  { value: "Natal, BR", label: "Natal - RN" },
+  { value: "João Pessoa, BR", label: "João Pessoa - PB" },
+  { value: "Florianópolis, BR", label: "Florianópolis - SC" },
+  { value: "Cuiabá, BR", label: "Cuiabá - MT" },
+  { value: "Goiânia, BR", label: "Goiânia - GO" },
+];
 
 function buildConfig(f: FormState) {
   if (f.content_type === "weather") return { city: f.city, interval: f.weatherInterval };
@@ -310,11 +329,21 @@ function DynamicContentPage() {
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Cidade</Label>
-                  <Input
+                  <Select
                     value={form.city}
-                    onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))}
-                    placeholder="São Paulo, BR"
-                  />
+                    onValueChange={(v) => setForm((f) => ({ ...f, city: v }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {BRAZILIAN_CITIES.map((c) => (
+                        <SelectItem key={c.value} value={c.value}>
+                          {c.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label>Atualizar a cada (min)</Label>
