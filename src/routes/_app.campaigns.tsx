@@ -719,6 +719,131 @@ function CampaignsPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Edit Campaign */}
+      <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Editar campanha</DialogTitle>
+          </DialogHeader>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!editForm.name.trim()) return toast.error("Informe o nome");
+              editMutation.mutate();
+            }}
+            className="space-y-4"
+          >
+            <div className="space-y-2">
+              <Label>Nome</Label>
+              <Input
+                value={editForm.name}
+                onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Anunciante</Label>
+              <Select
+                value={editForm.advertiser_id}
+                onValueChange={(v) => setEditForm((f) => ({ ...f, advertiser_id: v }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(advertisersQuery.data ?? []).map((a) => (
+                    <SelectItem key={a.id} value={a.id}>
+                      {a.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select
+                  value={editForm.status}
+                  onValueChange={(v) =>
+                    setEditForm((f) => ({ ...f, status: v as typeof f.status }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Ativa</SelectItem>
+                    <SelectItem value="paused">Pausada</SelectItem>
+                    <SelectItem value="completed">Concluída</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Prioridade</Label>
+                <Select
+                  value={editForm.priority}
+                  onValueChange={(v) =>
+                    setEditForm((f) => ({ ...f, priority: v as typeof f.priority }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="gold">🥇 Ouro</SelectItem>
+                    <SelectItem value="silver">🥈 Prata</SelectItem>
+                    <SelectItem value="bronze">🥉 Bronze</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Início</Label>
+                <Input
+                  type="date"
+                  value={editForm.start_date}
+                  onChange={(e) =>
+                    setEditForm((f) => ({ ...f, start_date: e.target.value }))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Término</Label>
+                <Input
+                  type="date"
+                  value={editForm.end_date}
+                  onChange={(e) =>
+                    setEditForm((f) => ({ ...f, end_date: e.target.value }))
+                  }
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Duração (segundos)</Label>
+              <Input
+                type="number"
+                min={1}
+                value={editForm.duration_seconds}
+                onChange={(e) =>
+                  setEditForm((f) => ({
+                    ...f,
+                    duration_seconds: parseInt(e.target.value) || 1,
+                  }))
+                }
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setEditing(null)}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={editMutation.isPending}>
+                {editMutation.isPending ? "Salvando…" : "Salvar"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
