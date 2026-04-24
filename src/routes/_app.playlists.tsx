@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { ListMusic, Plus, Pencil, Trash2, Repeat } from "lucide-react";
+import { ListMusic, Plus, Pencil, Trash2, Repeat, ListPlus } from "lucide-react";
 import { toast } from "sonner";
+import { ManagePlaylistContent } from "@/components/manage-playlist-content";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import { PageHeader, EmptyState, LoadingState } from "@/components/page-helpers";
