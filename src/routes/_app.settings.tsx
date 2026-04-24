@@ -166,9 +166,10 @@ function SettingsPage() {
   function clearCache() {
     if (!confirm("Limpar cache do navegador?")) return;
     try {
-      // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-      typeof window !== "undefined" && window.localStorage.clear();
-      typeof window !== "undefined" && window.sessionStorage.clear();
+      if (typeof window !== "undefined") {
+        window.localStorage.clear();
+        window.sessionStorage.clear();
+      }
       if (typeof caches !== "undefined") {
         caches.keys().then((names) => names.forEach((n) => caches.delete(n)));
       }
