@@ -91,7 +91,7 @@ const initialWizard: WizardData = {
   previewUrl: null,
   name: "",
   duration_seconds: 15,
-  priority: "normal",
+  priority: "silver",
   start_date: new Date().toISOString().slice(0, 10),
   end_date: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
 };
