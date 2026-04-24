@@ -79,7 +79,7 @@ interface WizardData {
   previewUrl: string | null;
   name: string;
   duration_seconds: number;
-  priority: "low" | "normal" | "high";
+  priority: "gold" | "silver" | "bronze";
   start_date: string;
   end_date: string;
 }
@@ -91,7 +91,7 @@ const initialWizard: WizardData = {
   previewUrl: null,
   name: "",
   duration_seconds: 15,
-  priority: "normal",
+  priority: "silver",
   start_date: new Date().toISOString().slice(0, 10),
   end_date: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
 };
@@ -107,6 +107,54 @@ function CampaignsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [previewMedia, setPreviewMedia] = useState<{ url: string; isVideo: boolean; name: string } | null>(null);
+  const [editing, setEditing] = useState<Campaign | null>(null);
+  const [editForm, setEditForm] = useState({
+    name: "",
+    advertiser_id: "",
+    status: "active" as "active" | "paused" | "completed",
+    priority: "silver" as "gold" | "silver" | "bronze",
+    start_date: "",
+    end_date: "",
+    duration_seconds: 15,
+  });
+
+  const openEdit = (c: Campaign) => {
+    setEditing(c);
+    setEditForm({
+      name: c.name ?? "",
+      advertiser_id: c.advertiser_id ?? "",
+      status: ((c.status as "active" | "paused" | "completed") ?? "active"),
+      priority: ((c.priority as "gold" | "silver" | "bronze") ?? "silver"),
+      start_date: c.start_date ?? "",
+      end_date: c.end_date ?? "",
+      duration_seconds: c.duration_seconds ?? 15,
+    });
+  };
+
+  const editMutation = useMutation({
+    mutationFn: async () => {
+      if (!editing) return;
+      const { error } = await supabase
+        .from("campaigns")
+        .update({
+          name: editForm.name.trim(),
+          advertiser_id: editForm.advertiser_id || null,
+          status: editForm.status,
+          priority: editForm.priority,
+          start_date: editForm.start_date,
+          end_date: editForm.end_date,
+          duration_seconds: editForm.duration_seconds,
+        })
+        .eq("id", editing.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["campaigns", userId] });
+      toast.success("Campanha atualizada");
+      setEditing(null);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const campaignsQuery = useQuery({
     queryKey: ["campaigns", userId],
@@ -311,14 +359,23 @@ function CampaignsPage() {
                   ) : (
                     <span className="sm:hidden" />
                   )}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="ml-auto text-destructive hover:text-destructive"
-                    onClick={() => setDeleteId(c.id)}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
+                  <div className="ml-auto flex items-center gap-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openEdit(c)}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => setDeleteId(c.id)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -516,9 +573,9 @@ function CampaignsPage() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="low">Baixa</SelectItem>
-                        <SelectItem value="normal">Normal</SelectItem>
-                        <SelectItem value="high">Alta</SelectItem>
+                        <SelectItem value="gold">🥇 Ouro</SelectItem>
+                        <SelectItem value="silver">🥈 Prata</SelectItem>
+                        <SelectItem value="bronze">🥉 Bronze</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -660,6 +717,131 @@ function CampaignsPage() {
               )}
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Campaign */}
+      <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Editar campanha</DialogTitle>
+          </DialogHeader>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!editForm.name.trim()) return toast.error("Informe o nome");
+              editMutation.mutate();
+            }}
+            className="space-y-4"
+          >
+            <div className="space-y-2">
+              <Label>Nome</Label>
+              <Input
+                value={editForm.name}
+                onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Anunciante</Label>
+              <Select
+                value={editForm.advertiser_id}
+                onValueChange={(v) => setEditForm((f) => ({ ...f, advertiser_id: v }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(advertisersQuery.data ?? []).map((a) => (
+                    <SelectItem key={a.id} value={a.id}>
+                      {a.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select
+                  value={editForm.status}
+                  onValueChange={(v) =>
+                    setEditForm((f) => ({ ...f, status: v as typeof f.status }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Ativa</SelectItem>
+                    <SelectItem value="paused">Pausada</SelectItem>
+                    <SelectItem value="completed">Concluída</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Prioridade</Label>
+                <Select
+                  value={editForm.priority}
+                  onValueChange={(v) =>
+                    setEditForm((f) => ({ ...f, priority: v as typeof f.priority }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="gold">🥇 Ouro</SelectItem>
+                    <SelectItem value="silver">🥈 Prata</SelectItem>
+                    <SelectItem value="bronze">🥉 Bronze</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Início</Label>
+                <Input
+                  type="date"
+                  value={editForm.start_date}
+                  onChange={(e) =>
+                    setEditForm((f) => ({ ...f, start_date: e.target.value }))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Término</Label>
+                <Input
+                  type="date"
+                  value={editForm.end_date}
+                  onChange={(e) =>
+                    setEditForm((f) => ({ ...f, end_date: e.target.value }))
+                  }
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Duração (segundos)</Label>
+              <Input
+                type="number"
+                min={1}
+                value={editForm.duration_seconds}
+                onChange={(e) =>
+                  setEditForm((f) => ({
+                    ...f,
+                    duration_seconds: parseInt(e.target.value) || 1,
+                  }))
+                }
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setEditing(null)}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={editMutation.isPending}>
+                {editMutation.isPending ? "Salvando…" : "Salvar"}
+              </Button>
+            </div>
+          </form>
         </DialogContent>
       </Dialog>
     </>

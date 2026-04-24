@@ -4,14 +4,11 @@ import { useState } from "react";
 import {
   Sparkles,
   Plus,
-  Pencil,
   Trash2,
   Cloud,
   Newspaper,
-  Clock,
-  Rss,
-  TrendingUp,
-  Power,
+  Type,
+  Code2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
@@ -20,6 +17,7 @@ import { PageHeader, EmptyState, LoadingState } from "@/components/page-helpers"
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +31,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -52,172 +51,147 @@ export const Route = createFileRoute("/_app/dynamic-content")({
   head: () => ({ meta: [{ title: "Conteúdo Dinâmico — Loopin TV" }] }),
 });
 
-type WidgetType = "clock" | "weather" | "news" | "rss" | "stocks";
+type ContentType = "weather" | "news" | "ticker" | "html";
 
-interface DynamicWidget {
+interface DynamicContent {
   id: string;
   name: string;
-  type: WidgetType;
-  config: Record<string, string> | null;
-  position: string | null;
-  enabled: boolean;
+  content_type: ContentType;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  configuration: any;
+  is_active: boolean;
   created_at: string;
 }
 
 interface FormState {
   name: string;
-  type: WidgetType;
+  content_type: ContentType;
+  is_active: boolean;
+  // weather
   city: string;
-  rss_url: string;
-  symbols: string;
-  position: string;
-  enabled: boolean;
+  weatherInterval: number;
+  // news
+  newsCategory: string;
+  newsInterval: number;
+  // ticker
+  tickerText: string;
+  tickerSpeed: number;
+  // html
+  html: string;
 }
 
-const emptyForm: FormState = {
+const empty: FormState = {
   name: "",
-  type: "clock",
-  city: "",
-  rss_url: "",
-  symbols: "",
-  position: "bottom",
-  enabled: true,
+  content_type: "weather",
+  is_active: true,
+  city: "São Paulo, BR",
+  weatherInterval: 30,
+  newsCategory: "general",
+  newsInterval: 60,
+  tickerText: "",
+  tickerSpeed: 50,
+  html: "",
 };
 
 const TYPE_META: Record<
-  WidgetType,
-  { label: string; icon: typeof Cloud; description: string }
+  ContentType,
+  { label: string; icon: typeof Cloud; color: string }
 > = {
-  clock: { label: "Data e Hora", icon: Clock, description: "Relógio digital sobreposto" },
-  weather: { label: "Clima", icon: Cloud, description: "Previsão do tempo por cidade" },
-  news: { label: "Notícias", icon: Newspaper, description: "Manchetes rotativas" },
-  rss: { label: "Feed RSS", icon: Rss, description: "Feed customizado em ticker" },
-  stocks: { label: "Cotações", icon: TrendingUp, description: "Ações, câmbio, cripto" },
+  weather: { label: "Clima", icon: Cloud, color: "bg-sky-500/10 text-sky-700 dark:text-sky-300" },
+  news: { label: "Notícias", icon: Newspaper, color: "bg-amber-500/10 text-amber-700 dark:text-amber-300" },
+  ticker: { label: "Ticker", icon: Type, color: "bg-violet-500/10 text-violet-700 dark:text-violet-300" },
+  html: { label: "HTML Custom", icon: Code2, color: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" },
 };
+
+function buildConfig(f: FormState) {
+  if (f.content_type === "weather") return { city: f.city, interval: f.weatherInterval };
+  if (f.content_type === "news") return { category: f.newsCategory, interval: f.newsInterval };
+  if (f.content_type === "ticker") return { text: f.tickerText, speed: f.tickerSpeed };
+  if (f.content_type === "html") return { html: f.html };
+  return {};
+}
 
 function DynamicContentPage() {
   const { user } = useAuth();
   const userId = user!.id;
   const qc = useQueryClient();
 
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editing, setEditing] = useState<DynamicWidget | null>(null);
-  const [form, setForm] = useState<FormState>(emptyForm);
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState<FormState>(empty);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["dynamic-widgets", userId],
+    queryKey: ["dynamic-contents", userId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("dynamic_widgets")
+        .from("dynamic_contents")
         .select("*")
         .eq("user_id", userId)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as unknown as DynamicWidget[];
+      return (data ?? []) as DynamicContent[];
     },
   });
 
   const saveMutation = useMutation({
-    mutationFn: async () => {
-      const config: Record<string, string> = {};
-      if (form.type === "weather" && form.city) config.city = form.city.trim();
-      if (form.type === "rss" && form.rss_url) config.rss_url = form.rss_url.trim();
-      if (form.type === "stocks" && form.symbols)
-        config.symbols = form.symbols.trim();
-
-      const payload = {
+    mutationFn: async (input: FormState) => {
+      const { error } = await supabase.from("dynamic_contents").insert({
         user_id: userId,
-        name: form.name.trim(),
-        type: form.type,
-        config: Object.keys(config).length ? config : null,
-        position: form.position,
-        enabled: form.enabled,
-      };
-      if (editing) {
-        const { error } = await supabase
-          .from("dynamic_widgets")
-          .update(payload)
-          .eq("id", editing.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from("dynamic_widgets").insert(payload);
-        if (error) throw error;
-      }
+        name: input.name.trim(),
+        content_type: input.content_type,
+        configuration: buildConfig(input),
+        is_active: input.is_active,
+      });
+      if (error) throw error;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["dynamic-widgets", userId] });
-      toast.success(editing ? "Widget atualizado" : "Widget criado");
-      closeDialog();
+      qc.invalidateQueries({ queryKey: ["dynamic-contents", userId] });
+      qc.invalidateQueries({ queryKey: ["library", userId] });
+      toast.success("Widget criado");
+      setOpen(false);
+      setForm(empty);
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
   const toggleMutation = useMutation({
-    mutationFn: async ({ id, enabled }: { id: string; enabled: boolean }) => {
+    mutationFn: async (w: DynamicContent) => {
       const { error } = await supabase
-        .from("dynamic_widgets")
-        .update({ enabled })
-        .eq("id", id);
+        .from("dynamic_contents")
+        .update({ is_active: !w.is_active })
+        .eq("id", w.id);
       if (error) throw error;
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["dynamic-widgets", userId] });
-    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["dynamic-contents", userId] }),
     onError: (e: Error) => toast.error(e.message),
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from("dynamic_widgets")
-        .delete()
-        .eq("id", id);
+      const { error } = await supabase.from("dynamic_contents").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["dynamic-widgets", userId] });
+      qc.invalidateQueries({ queryKey: ["dynamic-contents", userId] });
       toast.success("Widget excluído");
       setDeleteId(null);
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const openNew = () => {
-    setEditing(null);
-    setForm(emptyForm);
-    setDialogOpen(true);
-  };
-
-  const openEdit = (w: DynamicWidget) => {
-    setEditing(w);
-    const cfg = w.config ?? {};
-    setForm({
-      name: w.name,
-      type: w.type,
-      city: cfg.city ?? "",
-      rss_url: cfg.rss_url ?? "",
-      symbols: cfg.symbols ?? "",
-      position: w.position ?? "bottom",
-      enabled: w.enabled,
-    });
-    setDialogOpen(true);
-  };
-
-  const closeDialog = () => {
-    setDialogOpen(false);
-    setEditing(null);
-    setForm(emptyForm);
-  };
-
   return (
     <>
       <PageHeader
         title="Conteúdo Dinâmico"
-        description="Widgets que aparecem sobreposto às suas mídias (clima, notícias, relógio, feeds)."
+        description="Widgets de clima, notícias, ticker e HTML para reproduzir nas suas playlists."
         icon={Sparkles}
         action={
-          <Button onClick={openNew}>
+          <Button
+            onClick={() => {
+              setForm(empty);
+              setOpen(true);
+            }}
+          >
             <Plus className="mr-2 h-4 w-4" /> Novo widget
           </Button>
         }
@@ -229,69 +203,56 @@ function DynamicContentPage() {
         <EmptyState
           icon={Sparkles}
           title="Nenhum widget criado"
-          description="Adicione elementos dinâmicos como clima, relógio ou notícias para sobrepor às suas campanhas."
+          description="Adicione widgets dinâmicos para enriquecer suas playlists."
           actionLabel="Criar primeiro widget"
-          onAction={openNew}
+          onAction={() => setOpen(true)}
         />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {data!.map((w) => {
-            const meta = TYPE_META[w.type];
+          {(data ?? []).map((w) => {
+            const meta = TYPE_META[w.content_type] ?? TYPE_META.html;
             const Icon = meta.icon;
+            const cfg = w.configuration ?? {};
             return (
-              <Card key={w.id} className={!w.enabled ? "opacity-60" : ""}>
-                <CardContent className="flex flex-col gap-3 p-5">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <Card key={w.id} className="transition-shadow hover:shadow-soft">
+                <CardContent className="p-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex min-w-0 items-start gap-3">
+                      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${meta.color}`}>
                         <Icon className="h-5 w-5" />
                       </div>
                       <div className="min-w-0">
-                        <h3 className="truncate font-semibold">{w.name}</h3>
-                        <p className="truncate text-xs text-muted-foreground">
+                        <h3 className="truncate text-base font-semibold">{w.name}</h3>
+                        <Badge variant="secondary" className="mt-1 text-[10px]">
                           {meta.label}
-                        </p>
+                        </Badge>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <Switch
-                        checked={w.enabled}
-                        onCheckedChange={(v) =>
-                          toggleMutation.mutate({ id: w.id, enabled: v })
-                        }
-                        aria-label="Ativar"
-                      />
-                    </div>
+                    <Switch
+                      checked={w.is_active}
+                      onCheckedChange={() => toggleMutation.mutate(w)}
+                    />
                   </div>
-
-                  <div className="flex flex-wrap gap-1.5 text-xs">
-                    <Badge variant="outline">
-                      {w.position === "top"
-                        ? "Topo"
-                        : w.position === "bottom"
-                          ? "Rodapé"
-                          : "Ticker"}
-                    </Badge>
-                    <Badge variant={w.enabled ? "default" : "secondary"}>
-                      <Power className="mr-1 h-3 w-3" />
-                      {w.enabled ? "Ativo" : "Inativo"}
-                    </Badge>
+                  <div className="mt-4 space-y-1 text-xs text-muted-foreground">
+                    {w.content_type === "weather" && (
+                      <p>Cidade: <span className="text-foreground">{cfg.city ?? "—"}</span></p>
+                    )}
+                    {w.content_type === "news" && (
+                      <p>Categoria: <span className="text-foreground">{cfg.category ?? "—"}</span></p>
+                    )}
+                    {w.content_type === "ticker" && (
+                      <p className="line-clamp-2">"{cfg.text ?? "—"}"</p>
+                    )}
+                    {w.content_type === "html" && (
+                      <p>HTML personalizado ({String(cfg.html ?? "").length} caracteres)</p>
+                    )}
                   </div>
-
-                  <div className="flex gap-2 pt-1">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1"
-                      onClick={() => openEdit(w)}
-                    >
-                      <Pencil className="mr-1.5 h-3.5 w-3.5" /> Editar
-                    </Button>
+                  <div className="mt-4 flex justify-end">
                     <Button
                       variant="ghost"
                       size="sm"
+                      className="text-destructive hover:text-destructive"
                       onClick={() => setDeleteId(w.id)}
-                      aria-label="Excluir"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
@@ -303,146 +264,177 @@ function DynamicContentPage() {
         </div>
       )}
 
-      <Dialog open={dialogOpen} onOpenChange={(o) => (o ? null : closeDialog())}>
-        <DialogContent className="sm:max-w-lg">
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>
-              {editing ? "Editar widget" : "Novo widget dinâmico"}
-            </DialogTitle>
+            <DialogTitle>Novo widget</DialogTitle>
           </DialogHeader>
           <form
-            className="space-y-4"
             onSubmit={(e) => {
               e.preventDefault();
-              if (!form.name.trim()) {
-                toast.error("Informe o nome");
-                return;
-              }
-              saveMutation.mutate();
+              if (!form.name.trim()) return toast.error("Informe um nome");
+              saveMutation.mutate(form);
             }}
+            className="space-y-4"
           >
             <div className="space-y-2">
-              <Label htmlFor="name">Nome *</Label>
+              <Label>Nome</Label>
               <Input
-                id="name"
                 value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                placeholder="Ex: Clima em São Paulo"
-                autoFocus
+                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                placeholder="Ex.: Clima São Paulo"
               />
             </div>
 
             <div className="space-y-2">
               <Label>Tipo</Label>
               <Select
-                value={form.type}
-                onValueChange={(v) => setForm({ ...form, type: v as WidgetType })}
+                value={form.content_type}
+                onValueChange={(v) =>
+                  setForm((f) => ({ ...f, content_type: v as ContentType }))
+                }
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {(Object.keys(TYPE_META) as WidgetType[]).map((t) => (
-                    <SelectItem key={t} value={t}>
-                      {TYPE_META[t].label} — {TYPE_META[t].description}
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="weather">🌤️ Clima</SelectItem>
+                  <SelectItem value="news">📰 Notícias</SelectItem>
+                  <SelectItem value="ticker">📝 Ticker (Letreiro)</SelectItem>
+                  <SelectItem value="html">💻 HTML Custom</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            {form.type === "weather" && (
+            {form.content_type === "weather" && (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Cidade</Label>
+                  <Input
+                    value={form.city}
+                    onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))}
+                    placeholder="São Paulo, BR"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Atualizar a cada (min)</Label>
+                  <Input
+                    type="number"
+                    min={5}
+                    value={form.weatherInterval}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, weatherInterval: +e.target.value || 30 }))
+                    }
+                  />
+                </div>
+              </div>
+            )}
+
+            {form.content_type === "news" && (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Categoria</Label>
+                  <Select
+                    value={form.newsCategory}
+                    onValueChange={(v) => setForm((f) => ({ ...f, newsCategory: v }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="general">Geral</SelectItem>
+                      <SelectItem value="business">Negócios</SelectItem>
+                      <SelectItem value="technology">Tecnologia</SelectItem>
+                      <SelectItem value="sports">Esportes</SelectItem>
+                      <SelectItem value="entertainment">Entretenimento</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Atualizar a cada (min)</Label>
+                  <Input
+                    type="number"
+                    min={5}
+                    value={form.newsInterval}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, newsInterval: +e.target.value || 60 }))
+                    }
+                  />
+                </div>
+              </div>
+            )}
+
+            {form.content_type === "ticker" && (
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <Label>Texto do ticker</Label>
+                  <Textarea
+                    rows={3}
+                    value={form.tickerText}
+                    onChange={(e) => setForm((f) => ({ ...f, tickerText: e.target.value }))}
+                    placeholder="Promoção imperdível! Confira nossas ofertas..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Velocidade ({form.tickerSpeed}px/s)</Label>
+                  <Input
+                    type="range"
+                    min={20}
+                    max={150}
+                    value={form.tickerSpeed}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, tickerSpeed: +e.target.value }))
+                    }
+                  />
+                </div>
+              </div>
+            )}
+
+            {form.content_type === "html" && (
               <div className="space-y-2">
-                <Label htmlFor="city">Cidade</Label>
-                <Input
-                  id="city"
-                  value={form.city}
-                  onChange={(e) => setForm({ ...form, city: e.target.value })}
-                  placeholder="Ex: São Paulo, BR"
+                <Label>HTML personalizado</Label>
+                <Textarea
+                  rows={6}
+                  value={form.html}
+                  onChange={(e) => setForm((f) => ({ ...f, html: e.target.value }))}
+                  placeholder="<div>Seu HTML aqui</div>"
+                  className="font-mono text-xs"
                 />
               </div>
             )}
 
-            {form.type === "rss" && (
-              <div className="space-y-2">
-                <Label htmlFor="rss">URL do feed RSS</Label>
-                <Input
-                  id="rss"
-                  value={form.rss_url}
-                  onChange={(e) => setForm({ ...form, rss_url: e.target.value })}
-                  placeholder="https://exemplo.com/feed.xml"
-                />
-              </div>
-            )}
-
-            {form.type === "stocks" && (
-              <div className="space-y-2">
-                <Label htmlFor="symbols">Símbolos (separe por vírgula)</Label>
-                <Input
-                  id="symbols"
-                  value={form.symbols}
-                  onChange={(e) => setForm({ ...form, symbols: e.target.value })}
-                  placeholder="PETR4, USD, BTC"
-                />
-              </div>
-            )}
-
-            <div className="space-y-2">
-              <Label>Posição na tela</Label>
-              <Select
-                value={form.position}
-                onValueChange={(v) => setForm({ ...form, position: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="top">Topo</SelectItem>
-                  <SelectItem value="bottom">Rodapé</SelectItem>
-                  <SelectItem value="ticker">Ticker (linha rolante)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex items-center justify-between rounded-lg border p-3">
-              <div>
-                <Label className="cursor-pointer">Ativo</Label>
-                <p className="text-xs text-muted-foreground">
-                  Quando desligado, não aparece nas telas.
-                </p>
-              </div>
+            <div className="flex items-center justify-between rounded-lg border bg-muted/30 p-3">
+              <Label>Ativo</Label>
               <Switch
-                checked={form.enabled}
-                onCheckedChange={(v) => setForm({ ...form, enabled: v })}
+                checked={form.is_active}
+                onCheckedChange={(v) => setForm((f) => ({ ...f, is_active: v }))}
               />
             </div>
 
-            <div className="flex justify-end gap-2 pt-2">
-              <Button type="button" variant="ghost" onClick={closeDialog}>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                 Cancelar
               </Button>
               <Button type="submit" disabled={saveMutation.isPending}>
-                {saveMutation.isPending ? "Salvando..." : "Salvar"}
+                {saveMutation.isPending ? "Salvando…" : "Salvar"}
               </Button>
-            </div>
+            </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
 
-      <AlertDialog
-        open={!!deleteId}
-        onOpenChange={(o) => (o ? null : setDeleteId(null))}
-      >
+      <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir widget?</AlertDialogTitle>
+            <AlertDialogTitle>Excluir este widget?</AlertDialogTitle>
             <AlertDialogDescription>
-              Essa ação não pode ser desfeita.
+              O widget será removido e não aparecerá mais nas playlists.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => deleteId && deleteMutation.mutate(deleteId)}
             >
               Excluir

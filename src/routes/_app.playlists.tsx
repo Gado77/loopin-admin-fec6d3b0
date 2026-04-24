@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { ListMusic, Plus, Pencil, Trash2, Repeat } from "lucide-react";
+import { ListMusic, Plus, Pencil, Trash2, Repeat, ListPlus } from "lucide-react";
 import { toast } from "sonner";
+import { ManagePlaylistContent } from "@/components/manage-playlist-content";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import { PageHeader, EmptyState, LoadingState } from "@/components/page-helpers";
@@ -62,6 +63,7 @@ function PlaylistsPage() {
   const [editing, setEditing] = useState<Playlist | null>(null);
   const [form, setForm] = useState<PlaylistForm>(emptyForm);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [managePlaylist, setManagePlaylist] = useState<Playlist | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["playlists", userId],
@@ -188,7 +190,14 @@ function PlaylistsPage() {
                     {Math.round((p.duration_total ?? 0) / 60)} min
                   </span>
                 </p>
-                <div className="mt-4 flex justify-end gap-2">
+                <div className="mt-4 flex flex-wrap justify-end gap-2">
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => setManagePlaylist(p)}
+                  >
+                    <ListPlus className="mr-1.5 h-3.5 w-3.5" /> Gerenciar
+                  </Button>
                   <Button variant="outline" size="sm" onClick={() => openEdit(p)}>
                     <Pencil className="mr-1.5 h-3.5 w-3.5" /> Editar
                   </Button>
@@ -287,6 +296,13 @@ function PlaylistsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ManagePlaylistContent
+        open={!!managePlaylist}
+        onOpenChange={(o) => !o && setManagePlaylist(null)}
+        userId={userId}
+        playlist={managePlaylist}
+      />
     </>
   );
 }
