@@ -296,6 +296,13 @@ function PlaylistsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ManagePlaylistContent
+        open={!!managePlaylist}
+        onOpenChange={(o) => !o && setManagePlaylist(null)}
+        userId={userId}
+        playlist={managePlaylist}
+      />
     </>
   );
 }
