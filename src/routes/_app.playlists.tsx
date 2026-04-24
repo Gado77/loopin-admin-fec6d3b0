@@ -190,7 +190,14 @@ function PlaylistsPage() {
                     {Math.round((p.duration_total ?? 0) / 60)} min
                   </span>
                 </p>
-                <div className="mt-4 flex justify-end gap-2">
+                <div className="mt-4 flex flex-wrap justify-end gap-2">
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => setManagePlaylist(p)}
+                  >
+                    <ListPlus className="mr-1.5 h-3.5 w-3.5" /> Gerenciar
+                  </Button>
                   <Button variant="outline" size="sm" onClick={() => openEdit(p)}>
                     <Pencil className="mr-1.5 h-3.5 w-3.5" /> Editar
                   </Button>
