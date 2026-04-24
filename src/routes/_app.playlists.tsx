@@ -63,8 +63,7 @@ function PlaylistsPage() {
   const [editing, setEditing] = useState<Playlist | null>(null);
   const [form, setForm] = useState<PlaylistForm>(emptyForm);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-
-  const { data, isLoading } = useQuery({
+  const [managePlaylist, setManagePlaylist] = useState<Playlist | null>(null);
     queryKey: ["playlists", userId],
     queryFn: async () => {
       const { data, error } = await supabase
