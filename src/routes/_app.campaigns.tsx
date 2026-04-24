@@ -359,14 +359,23 @@ function CampaignsPage() {
                   ) : (
                     <span className="sm:hidden" />
                   )}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="ml-auto text-destructive hover:text-destructive"
-                    onClick={() => setDeleteId(c.id)}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
+                  <div className="ml-auto flex items-center gap-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openEdit(c)}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => setDeleteId(c.id)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
