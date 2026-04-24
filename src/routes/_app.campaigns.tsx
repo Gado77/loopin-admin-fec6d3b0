@@ -107,6 +107,54 @@ function CampaignsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [previewMedia, setPreviewMedia] = useState<{ url: string; isVideo: boolean; name: string } | null>(null);
+  const [editing, setEditing] = useState<Campaign | null>(null);
+  const [editForm, setEditForm] = useState({
+    name: "",
+    advertiser_id: "",
+    status: "active" as "active" | "paused" | "completed",
+    priority: "silver" as "gold" | "silver" | "bronze",
+    start_date: "",
+    end_date: "",
+    duration_seconds: 15,
+  });
+
+  const openEdit = (c: Campaign) => {
+    setEditing(c);
+    setEditForm({
+      name: c.name ?? "",
+      advertiser_id: c.advertiser_id ?? "",
+      status: ((c.status as "active" | "paused" | "completed") ?? "active"),
+      priority: ((c.priority as "gold" | "silver" | "bronze") ?? "silver"),
+      start_date: c.start_date ?? "",
+      end_date: c.end_date ?? "",
+      duration_seconds: c.duration_seconds ?? 15,
+    });
+  };
+
+  const editMutation = useMutation({
+    mutationFn: async () => {
+      if (!editing) return;
+      const { error } = await supabase
+        .from("campaigns")
+        .update({
+          name: editForm.name.trim(),
+          advertiser_id: editForm.advertiser_id || null,
+          status: editForm.status,
+          priority: editForm.priority,
+          start_date: editForm.start_date,
+          end_date: editForm.end_date,
+          duration_seconds: editForm.duration_seconds,
+        })
+        .eq("id", editing.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["campaigns", userId] });
+      toast.success("Campanha atualizada");
+      setEditing(null);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const campaignsQuery = useQuery({
     queryKey: ["campaigns", userId],
