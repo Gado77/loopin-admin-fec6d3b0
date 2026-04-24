@@ -88,7 +88,7 @@ function ReportsPage() {
     queryKey: ["play-logs", userId, start, end, screenFilter, campaignFilter],
     queryFn: async () => {
       let q = supabase
-        .from("play_logs")
+        .from("playback_logs")
         .select(
           "id, screen_id, campaign_id, played_at, duration_seconds, screens(name), campaigns(name, advertisers(name))",
         )
