@@ -301,7 +301,14 @@ function CampaignsPage() {
             return (
             <Card key={c.id} className="overflow-hidden transition-shadow hover:shadow-soft">
               {c.media_url && (
-                <div className="hidden aspect-video w-full overflow-hidden bg-muted sm:block">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setPreviewMedia({ url: c.media_url!, isVideo, name: c.name })
+                  }
+                  className="group relative hidden aspect-video w-full overflow-hidden bg-muted sm:block"
+                  aria-label={`Abrir ${isVideo ? "vídeo" : "imagem"} de ${c.name}`}
+                >
                   {isVideo ? (
                     <video src={c.media_url} className="h-full w-full object-cover" muted />
                   ) : (
@@ -311,7 +318,16 @@ function CampaignsPage() {
                       className="h-full w-full object-cover"
                     />
                   )}
-                </div>
+                  <span className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors group-hover:bg-black/40">
+                    <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white/90 text-foreground opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                      {isVideo ? (
+                        <Video className="h-5 w-5" />
+                      ) : (
+                        <ImageIcon className="h-5 w-5" />
+                      )}
+                    </span>
+                  </span>
+                </button>
               )}
               <CardContent className="p-5">
                 <div className="flex items-start justify-between gap-2">
