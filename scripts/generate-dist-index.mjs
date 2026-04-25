@@ -3,13 +3,33 @@ import path from "node:path";
 
 const distDir = path.resolve("dist");
 const assetsDir = path.join(distDir, "assets");
+const outputServerDir = path.resolve(".output/server");
 
 if (!fs.existsSync(distDir) || !fs.existsSync(assetsDir)) {
   throw new Error("dist/assets não encontrado após o build");
 }
 
+function getClientEntry() {
+  if (!fs.existsSync(outputServerDir)) {
+    return null;
+  }
+
+  const manifestFile = fs
+    .readdirSync(outputServerDir)
+    .find((file) => /^_tanstack-start-manifest_.*\.mjs$/.test(file));
+
+  if (!manifestFile) {
+    return null;
+  }
+
+  const manifestContent = fs.readFileSync(path.join(outputServerDir, manifestFile), "utf8");
+  const clientEntryMatch = manifestContent.match(/clientEntry:\s*"\/assets\/([^"]+)"/);
+
+  return clientEntryMatch?.[1] ?? null;
+}
+
 const assetFiles = fs.readdirSync(assetsDir);
-const mainScript = assetFiles.find((file) => /^index-.*\.js$/.test(file));
+const mainScript = getClientEntry() ?? assetFiles.find((file) => /^index-.*\.js$/.test(file));
 const mainStyle = assetFiles.find((file) => /^styles-.*\.css$/.test(file));
 
 if (!mainScript) {
@@ -32,4 +52,4 @@ const html = `<!doctype html>
 `;
 
 fs.writeFileSync(path.join(distDir, "index.html"), html, "utf8");
-console.log("dist/index.html gerado com sucesso");
+console.log(`dist/index.html gerado com sucesso (${mainScript})`);
