@@ -3,7 +3,8 @@ import path from "node:path";
 
 const distDir = path.resolve("dist");
 const assetsDir = path.join(distDir, "assets");
-const outputServerDir = path.resolve(".output/server");
+const serverCandidates = [".output/server", ".vercel/output/functions/__nitro.func"];
+const outputServerDir = serverCandidates.map((d) => path.resolve(d)).find((d) => fs.existsSync(d)) ?? path.resolve(".output/server");
 
 if (!fs.existsSync(distDir) || !fs.existsSync(assetsDir)) {
   throw new Error("dist/assets não encontrado após o build");
