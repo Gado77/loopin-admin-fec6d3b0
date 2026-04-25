@@ -79,9 +79,9 @@ interface WizardData {
   newAdvertiserName: string;
   file: File | null;
   previewUrl: string | null;
+  isVideo: boolean;
   name: string;
   duration_seconds: number;
-  priority: "gold" | "silver" | "bronze";
   start_date: string;
   end_date: string;
 }
@@ -91,9 +91,9 @@ const initialWizard: WizardData = {
   newAdvertiserName: "",
   file: null,
   previewUrl: null,
+  isVideo: false,
   name: "",
   duration_seconds: 15,
-  priority: "silver",
   start_date: new Date().toISOString().slice(0, 10),
   end_date: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
 };
@@ -119,7 +119,6 @@ function CampaignsPage() {
     name: "",
     advertiser_id: "",
     status: "active" as "active" | "paused" | "completed",
-    priority: "silver" as "gold" | "silver" | "bronze",
     start_date: "",
     end_date: "",
     duration_seconds: 15,
@@ -131,7 +130,6 @@ function CampaignsPage() {
       name: c.name ?? "",
       advertiser_id: c.advertiser_id ?? "",
       status: ((c.status as "active" | "paused" | "completed") ?? "active"),
-      priority: ((c.priority as "gold" | "silver" | "bronze") ?? "silver"),
       start_date: c.start_date ?? "",
       end_date: c.end_date ?? "",
       duration_seconds: c.duration_seconds ?? 15,
@@ -147,7 +145,6 @@ function CampaignsPage() {
           name: editForm.name.trim(),
           advertiser_id: editForm.advertiser_id || null,
           status: editForm.status,
-          priority: editForm.priority,
           start_date: editForm.start_date,
           end_date: editForm.end_date,
           duration_seconds: editForm.duration_seconds,
@@ -212,19 +209,46 @@ function CampaignsPage() {
     resetWizard();
   };
 
-  const handleFile = (e: ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
+  const acceptFile = (f: File) => {
     if (!f.type.startsWith("image/") && !f.type.startsWith("video/")) {
       toast.error("Use uma imagem ou vídeo");
       return;
     }
+    const isVideo = f.type.startsWith("video/");
+    const previewUrl = URL.createObjectURL(f);
+
     setData((d) => ({
       ...d,
       file: f,
-      previewUrl: URL.createObjectURL(f),
+      previewUrl,
+      isVideo,
       name: d.name || f.name.replace(/\.[^.]+$/, ""),
     }));
+
+    // Para vídeo: lê a duração real do arquivo automaticamente
+    if (isVideo) {
+      const v = document.createElement("video");
+      v.preload = "metadata";
+      v.src = previewUrl;
+      v.onloadedmetadata = () => {
+        const secs = Math.max(1, Math.round(v.duration || 0));
+        if (secs > 0) {
+          setData((d) => ({ ...d, duration_seconds: secs }));
+        }
+      };
+    }
+  };
+
+  const handleFile = (e: ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (f) acceptFile(f);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLLabelElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const f = e.dataTransfer.files?.[0];
+    if (f) acceptFile(f);
   };
 
   const canAdvance = (): boolean => {
@@ -275,7 +299,7 @@ function CampaignsPage() {
         advertiser_id: advertiserId || null,
         name: data.name.trim(),
         media_url: url,
-        priority: data.priority,
+        
         start_date: data.start_date,
         end_date: data.end_date,
         duration_seconds: data.duration_seconds,
@@ -531,9 +555,20 @@ function CampaignsPage() {
                   title="Envie a mídia"
                   description="Imagem (JPG/PNG) ou vídeo (MP4). Será armazenada com segurança."
                 />
-                <label className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed bg-muted/30 p-10 text-center hover:border-primary hover:bg-primary/5">
+                <label
+                  className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed bg-muted/30 p-10 text-center transition-colors hover:border-primary hover:bg-primary/5"
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  onDragEnter={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  onDrop={handleDrop}
+                >
                   {data.previewUrl ? (
-                    data.file?.type.startsWith("video/") ? (
+                    data.isVideo ? (
                       <video
                         src={data.previewUrl}
                         className="max-h-48 rounded-lg"
@@ -579,7 +614,11 @@ function CampaignsPage() {
                 <StepIntro
                   icon={Pencil}
                   title="Detalhes da campanha"
-                  description="Defina nome, prioridade e tempo de exibição por loop."
+                  description={
+                    data.isVideo
+                      ? "Defina o nome da campanha. A duração foi detectada do vídeo."
+                      : "Defina nome e tempo de exibição por loop."
+                  }
                 />
                 <div className="space-y-2">
                   <Label>Nome da campanha</Label>
@@ -589,7 +628,14 @@ function CampaignsPage() {
                     placeholder="Ex.: Promoção de Verão"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                {data.isVideo ? (
+                  <div className="rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
+                    Duração detectada do vídeo:{" "}
+                    <strong className="text-foreground">
+                      {data.duration_seconds}s
+                    </strong>
+                  </div>
+                ) : (
                   <div className="space-y-2">
                     <Label>Duração (segundos)</Label>
                     <Input
@@ -604,25 +650,7 @@ function CampaignsPage() {
                       }
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label>Prioridade</Label>
-                    <Select
-                      value={data.priority}
-                      onValueChange={(v) =>
-                        setData((d) => ({ ...d, priority: v as WizardData["priority"] }))
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="gold">🥇 Ouro</SelectItem>
-                        <SelectItem value="silver">🥈 Prata</SelectItem>
-                        <SelectItem value="bronze">🥉 Bronze</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+                )}
               </div>
             )}
 
@@ -673,7 +701,7 @@ function CampaignsPage() {
                     </li>
                     <li>
                       <strong className="text-foreground">Duração:</strong>{" "}
-                      {data.duration_seconds}s · Prioridade {data.priority}
+                      {data.duration_seconds}s
                     </li>
                   </ul>
                 </div>
@@ -832,43 +860,23 @@ function CampaignsPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label>Status</Label>
-                <Select
-                  value={editForm.status}
-                  onValueChange={(v) =>
-                    setEditForm((f) => ({ ...f, status: v as typeof f.status }))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="active">Ativa</SelectItem>
-                    <SelectItem value="paused">Pausada</SelectItem>
-                    <SelectItem value="completed">Concluída</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Prioridade</Label>
-                <Select
-                  value={editForm.priority}
-                  onValueChange={(v) =>
-                    setEditForm((f) => ({ ...f, priority: v as typeof f.priority }))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="gold">🥇 Ouro</SelectItem>
-                    <SelectItem value="silver">🥈 Prata</SelectItem>
-                    <SelectItem value="bronze">🥉 Bronze</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="space-y-2">
+              <Label>Status</Label>
+              <Select
+                value={editForm.status}
+                onValueChange={(v) =>
+                  setEditForm((f) => ({ ...f, status: v as typeof f.status }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Ativa</SelectItem>
+                  <SelectItem value="paused">Pausada</SelectItem>
+                  <SelectItem value="completed">Concluída</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
