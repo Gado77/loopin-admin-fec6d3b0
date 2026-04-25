@@ -276,23 +276,8 @@ function CampaignsPage() {
 
       // Otimização: se for vídeo, converte para MP4 H.264 720p (~1.5 Mbps)
       // antes do upload, para rodar suave em TV Box mais fracas.
-      let fileToUpload = data.file!;
-      if (fileToUpload.type.startsWith("video/")) {
-        try {
-          setTranscodeStatus({ active: true, phase: "loading", progress: 0 });
-          const optimized = await transcodeVideoFor720p(fileToUpload, (info) => {
-            setTranscodeStatus({ active: true, ...info });
-          });
-          fileToUpload = optimized;
-        } catch (err) {
-          console.error("Falha na otimização do vídeo:", err);
-          toast.warning(
-            "Não foi possível otimizar o vídeo neste navegador. Enviando o arquivo original.",
-          );
-        }
-      }
+let fileToUpload = data.file!;
 
-      setTranscodeStatus({ active: true, phase: "uploading", progress: 0 });
       const url = await uploadToWorker(fileToUpload);
 
       const { error: insertErr } = await supabase.from("campaigns").insert({
