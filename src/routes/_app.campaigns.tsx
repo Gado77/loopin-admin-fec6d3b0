@@ -119,7 +119,6 @@ function CampaignsPage() {
     name: "",
     advertiser_id: "",
     status: "active" as "active" | "paused" | "completed",
-    priority: "silver" as "gold" | "silver" | "bronze",
     start_date: "",
     end_date: "",
     duration_seconds: 15,
