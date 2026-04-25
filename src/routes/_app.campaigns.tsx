@@ -130,7 +130,6 @@ function CampaignsPage() {
       name: c.name ?? "",
       advertiser_id: c.advertiser_id ?? "",
       status: ((c.status as "active" | "paused" | "completed") ?? "active"),
-      priority: ((c.priority as "gold" | "silver" | "bronze") ?? "silver"),
       start_date: c.start_date ?? "",
       end_date: c.end_date ?? "",
       duration_seconds: c.duration_seconds ?? 15,
