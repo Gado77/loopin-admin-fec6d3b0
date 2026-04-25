@@ -145,7 +145,6 @@ function CampaignsPage() {
           name: editForm.name.trim(),
           advertiser_id: editForm.advertiser_id || null,
           status: editForm.status,
-          priority: editForm.priority,
           start_date: editForm.start_date,
           end_date: editForm.end_date,
           duration_seconds: editForm.duration_seconds,
