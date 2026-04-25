@@ -617,7 +617,11 @@ function CampaignsPage() {
                 <StepIntro
                   icon={Pencil}
                   title="Detalhes da campanha"
-                  description="Defina nome, prioridade e tempo de exibição por loop."
+                  description={
+                    data.isVideo
+                      ? "Defina o nome da campanha. A duração foi detectada do vídeo."
+                      : "Defina nome e tempo de exibição por loop."
+                  }
                 />
                 <div className="space-y-2">
                   <Label>Nome da campanha</Label>
@@ -627,7 +631,14 @@ function CampaignsPage() {
                     placeholder="Ex.: Promoção de Verão"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                {data.isVideo ? (
+                  <div className="rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
+                    Duração detectada do vídeo:{" "}
+                    <strong className="text-foreground">
+                      {data.duration_seconds}s
+                    </strong>
+                  </div>
+                ) : (
                   <div className="space-y-2">
                     <Label>Duração (segundos)</Label>
                     <Input
@@ -642,25 +653,7 @@ function CampaignsPage() {
                       }
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label>Prioridade</Label>
-                    <Select
-                      value={data.priority}
-                      onValueChange={(v) =>
-                        setData((d) => ({ ...d, priority: v as WizardData["priority"] }))
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="gold">🥇 Ouro</SelectItem>
-                        <SelectItem value="silver">🥈 Prata</SelectItem>
-                        <SelectItem value="bronze">🥉 Bronze</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+                )}
               </div>
             )}
 
