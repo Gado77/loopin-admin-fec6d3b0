@@ -558,9 +558,20 @@ function CampaignsPage() {
                   title="Envie a mídia"
                   description="Imagem (JPG/PNG) ou vídeo (MP4). Será armazenada com segurança."
                 />
-                <label className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed bg-muted/30 p-10 text-center hover:border-primary hover:bg-primary/5">
+                <label
+                  className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed bg-muted/30 p-10 text-center transition-colors hover:border-primary hover:bg-primary/5"
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  onDragEnter={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  onDrop={handleDrop}
+                >
                   {data.previewUrl ? (
-                    data.file?.type.startsWith("video/") ? (
+                    data.isVideo ? (
                       <video
                         src={data.previewUrl}
                         className="max-h-48 rounded-lg"
