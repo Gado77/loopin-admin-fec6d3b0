@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "build": "vite build && (test -e dist || ln -sf .output/public dist)",
+    "build": "vite build && rm -rf dist && mkdir -p dist && cp -R .output/public/. dist/",
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "start": "node .output/server/index.mjs",
