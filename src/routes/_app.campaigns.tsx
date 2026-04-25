@@ -20,6 +20,7 @@ import {
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import { supabase, uploadToWorker } from "@/lib/supabase";
+import { transcodeVideoFor720p } from "@/lib/video-transcode";
 import { PageHeader, EmptyState, LoadingState } from "@/components/page-helpers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +32,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   Select,
@@ -391,6 +393,9 @@ function CampaignsPage() {
             <DialogTitle className="flex items-center gap-2">
               <Megaphone className="h-5 w-5 text-primary" /> Nova campanha
             </DialogTitle>
+            <DialogDescription>
+              Crie uma nova campanha em 4 passos: anunciante, mídia, detalhes e agenda.
+            </DialogDescription>
           </DialogHeader>
 
           {/* Stepper */}
@@ -725,6 +730,9 @@ function CampaignsPage() {
         <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Editar campanha</DialogTitle>
+            <DialogDescription>
+              Altere os dados da campanha: nome, anunciante, prioridade e período.
+            </DialogDescription>
           </DialogHeader>
           <form
             onSubmit={(e) => {
