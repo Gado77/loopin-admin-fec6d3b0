@@ -20,6 +20,8 @@ import {
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import { supabase, uploadToWorker } from "@/lib/supabase";
+import { transcodeVideoFor720p } from "@/lib/video-transcode";
+import { Progress } from "@/components/ui/progress";
 import { PageHeader, EmptyState, LoadingState } from "@/components/page-helpers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -105,6 +107,11 @@ function CampaignsPage() {
   const [step, setStep] = useState<StepIndex>(0);
   const [data, setData] = useState<WizardData>(initialWizard);
   const [submitting, setSubmitting] = useState(false);
+  const [transcodeStatus, setTranscodeStatus] = useState<{
+    active: boolean;
+    phase: "loading" | "transcoding" | "finalizing" | "uploading";
+    progress: number;
+  }>({ active: false, phase: "loading", progress: 0 });
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [previewMedia, setPreviewMedia] = useState<{ url: string; isVideo: boolean; name: string } | null>(null);
   const [editing, setEditing] = useState<Campaign | null>(null);
@@ -242,7 +249,26 @@ function CampaignsPage() {
         advertiserId = created.id;
       }
 
-      const url = await uploadToWorker(data.file!);
+      // Otimização: se for vídeo, converte para MP4 H.264 720p (~1.5 Mbps)
+      // antes do upload, para rodar suave em TV Box mais fracas.
+      let fileToUpload = data.file!;
+      if (fileToUpload.type.startsWith("video/")) {
+        try {
+          setTranscodeStatus({ active: true, phase: "loading", progress: 0 });
+          const optimized = await transcodeVideoFor720p(fileToUpload, (info) => {
+            setTranscodeStatus({ active: true, ...info });
+          });
+          fileToUpload = optimized;
+        } catch (err) {
+          console.error("Falha na otimização do vídeo:", err);
+          toast.warning(
+            "Não foi possível otimizar o vídeo neste navegador. Enviando o arquivo original.",
+          );
+        }
+      }
+
+      setTranscodeStatus({ active: true, phase: "uploading", progress: 0 });
+      const url = await uploadToWorker(fileToUpload);
 
       const { error: insertErr } = await supabase.from("campaigns").insert({
         user_id: userId,
@@ -265,6 +291,7 @@ function CampaignsPage() {
       toast.error(e instanceof Error ? e.message : "Erro ao criar campanha");
     } finally {
       setSubmitting(false);
+      setTranscodeStatus({ active: false, phase: "loading", progress: 0 });
     }
   };
 
@@ -653,6 +680,36 @@ function CampaignsPage() {
               </div>
             )}
           </div>
+
+          {transcodeStatus.active && (
+            <div className="mt-4 rounded-lg border bg-muted/40 p-3">
+              <div className="mb-2 flex items-center justify-between text-xs font-medium">
+                <span className="flex items-center gap-2">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  {transcodeStatus.phase === "loading" && "Carregando otimizador…"}
+                  {transcodeStatus.phase === "transcoding" && "Otimizando vídeo para 720p…"}
+                  {transcodeStatus.phase === "finalizing" && "Finalizando otimização…"}
+                  {transcodeStatus.phase === "uploading" && "Enviando para o servidor…"}
+                </span>
+                {transcodeStatus.phase === "transcoding" && (
+                  <span className="tabular-nums text-muted-foreground">
+                    {Math.round(transcodeStatus.progress * 100)}%
+                  </span>
+                )}
+              </div>
+              <Progress
+                value={
+                  transcodeStatus.phase === "uploading"
+                    ? undefined
+                    : transcodeStatus.progress * 100
+                }
+                className="h-1.5"
+              />
+              <p className="mt-2 text-[11px] text-muted-foreground">
+                Convertendo para MP4 H.264 720p (~1.5 Mbps) — ideal para TV Box.
+              </p>
+            </div>
+          )}
 
           <div className="mt-6 flex items-center justify-between gap-2">
             <Button
