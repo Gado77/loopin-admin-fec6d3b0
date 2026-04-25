@@ -22,6 +22,7 @@ import { useAuth } from "@/lib/auth";
 import { supabase, uploadToWorker } from "@/lib/supabase";
 import { transcodeVideoFor720p } from "@/lib/video-transcode";
 import { PageHeader, EmptyState, LoadingState } from "@/components/page-helpers";
+import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
