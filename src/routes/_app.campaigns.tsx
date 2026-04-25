@@ -681,6 +681,36 @@ function CampaignsPage() {
             )}
           </div>
 
+          {transcodeStatus.active && (
+            <div className="mt-4 rounded-lg border bg-muted/40 p-3">
+              <div className="mb-2 flex items-center justify-between text-xs font-medium">
+                <span className="flex items-center gap-2">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  {transcodeStatus.phase === "loading" && "Carregando otimizador…"}
+                  {transcodeStatus.phase === "transcoding" && "Otimizando vídeo para 720p…"}
+                  {transcodeStatus.phase === "finalizing" && "Finalizando otimização…"}
+                  {transcodeStatus.phase === "uploading" && "Enviando para o servidor…"}
+                </span>
+                {transcodeStatus.phase === "transcoding" && (
+                  <span className="tabular-nums text-muted-foreground">
+                    {Math.round(transcodeStatus.progress * 100)}%
+                  </span>
+                )}
+              </div>
+              <Progress
+                value={
+                  transcodeStatus.phase === "uploading"
+                    ? undefined
+                    : transcodeStatus.progress * 100
+                }
+                className="h-1.5"
+              />
+              <p className="mt-2 text-[11px] text-muted-foreground">
+                Convertendo para MP4 H.264 720p (~1.5 Mbps) — ideal para TV Box.
+              </p>
+            </div>
+          )}
+
           <div className="mt-6 flex items-center justify-between gap-2">
             <Button
               variant="ghost"
