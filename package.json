@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "build": "NITRO_PRESET=static vite build && rm -rf dist && mkdir -p dist && cp -R .output/public/. dist/ && node scripts/generate-dist-index.mjs",
+    "build": "vite build && node scripts/build-dist.mjs",
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "start": "node .output/server/index.mjs",
