@@ -212,19 +212,46 @@ function CampaignsPage() {
     resetWizard();
   };
 
-  const handleFile = (e: ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
+  const acceptFile = (f: File) => {
     if (!f.type.startsWith("image/") && !f.type.startsWith("video/")) {
       toast.error("Use uma imagem ou vídeo");
       return;
     }
+    const isVideo = f.type.startsWith("video/");
+    const previewUrl = URL.createObjectURL(f);
+
     setData((d) => ({
       ...d,
       file: f,
-      previewUrl: URL.createObjectURL(f),
+      previewUrl,
+      isVideo,
       name: d.name || f.name.replace(/\.[^.]+$/, ""),
     }));
+
+    // Para vídeo: lê a duração real do arquivo automaticamente
+    if (isVideo) {
+      const v = document.createElement("video");
+      v.preload = "metadata";
+      v.src = previewUrl;
+      v.onloadedmetadata = () => {
+        const secs = Math.max(1, Math.round(v.duration || 0));
+        if (secs > 0) {
+          setData((d) => ({ ...d, duration_seconds: secs }));
+        }
+      };
+    }
+  };
+
+  const handleFile = (e: ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (f) acceptFile(f);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLLabelElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const f = e.dataTransfer.files?.[0];
+    if (f) acceptFile(f);
   };
 
   const canAdvance = (): boolean => {
