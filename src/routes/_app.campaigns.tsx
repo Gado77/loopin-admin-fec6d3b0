@@ -107,6 +107,11 @@ function CampaignsPage() {
   const [step, setStep] = useState<StepIndex>(0);
   const [data, setData] = useState<WizardData>(initialWizard);
   const [submitting, setSubmitting] = useState(false);
+  const [transcodeStatus, setTranscodeStatus] = useState<{
+    active: boolean;
+    phase: "loading" | "transcoding" | "finalizing" | "uploading";
+    progress: number;
+  }>({ active: false, phase: "loading", progress: 0 });
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [previewMedia, setPreviewMedia] = useState<{ url: string; isVideo: boolean; name: string } | null>(null);
   const [editing, setEditing] = useState<Campaign | null>(null);
