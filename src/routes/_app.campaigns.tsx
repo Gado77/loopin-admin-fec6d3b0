@@ -79,9 +79,9 @@ interface WizardData {
   newAdvertiserName: string;
   file: File | null;
   previewUrl: string | null;
+  isVideo: boolean;
   name: string;
   duration_seconds: number;
-  priority: "gold" | "silver" | "bronze";
   start_date: string;
   end_date: string;
 }
@@ -91,9 +91,9 @@ const initialWizard: WizardData = {
   newAdvertiserName: "",
   file: null,
   previewUrl: null,
+  isVideo: false,
   name: "",
   duration_seconds: 15,
-  priority: "silver",
   start_date: new Date().toISOString().slice(0, 10),
   end_date: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
 };
