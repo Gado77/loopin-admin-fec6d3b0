@@ -704,7 +704,7 @@ function CampaignsPage() {
                     </li>
                     <li>
                       <strong className="text-foreground">Duração:</strong>{" "}
-                      {data.duration_seconds}s · Prioridade {data.priority}
+                      {data.duration_seconds}s
                     </li>
                   </ul>
                 </div>
