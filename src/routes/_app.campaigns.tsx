@@ -302,7 +302,7 @@ function CampaignsPage() {
         advertiser_id: advertiserId || null,
         name: data.name.trim(),
         media_url: url,
-        priority: data.priority,
+        
         start_date: data.start_date,
         end_date: data.end_date,
         duration_seconds: data.duration_seconds,
