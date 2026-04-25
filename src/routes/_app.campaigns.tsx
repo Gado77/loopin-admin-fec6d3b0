@@ -249,7 +249,26 @@ function CampaignsPage() {
         advertiserId = created.id;
       }
 
-      const url = await uploadToWorker(data.file!);
+      // Otimização: se for vídeo, converte para MP4 H.264 720p (~1.5 Mbps)
+      // antes do upload, para rodar suave em TV Box mais fracas.
+      let fileToUpload = data.file!;
+      if (fileToUpload.type.startsWith("video/")) {
+        try {
+          setTranscodeStatus({ active: true, phase: "loading", progress: 0 });
+          const optimized = await transcodeVideoFor720p(fileToUpload, (info) => {
+            setTranscodeStatus({ active: true, ...info });
+          });
+          fileToUpload = optimized;
+        } catch (err) {
+          console.error("Falha na otimização do vídeo:", err);
+          toast.warning(
+            "Não foi possível otimizar o vídeo neste navegador. Enviando o arquivo original.",
+          );
+        }
+      }
+
+      setTranscodeStatus({ active: true, phase: "uploading", progress: 0 });
+      const url = await uploadToWorker(fileToUpload);
 
       const { error: insertErr } = await supabase.from("campaigns").insert({
         user_id: userId,
@@ -272,6 +291,7 @@ function CampaignsPage() {
       toast.error(e instanceof Error ? e.message : "Erro ao criar campanha");
     } finally {
       setSubmitting(false);
+      setTranscodeStatus({ active: false, phase: "loading", progress: 0 });
     }
   };
 
