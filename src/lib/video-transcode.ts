@@ -79,7 +79,10 @@ export async function transcodeVideoFor720p(
     onProgress?.({ phase: "finalizing", progress: 1 });
 
     const data = await ff.readFile(outputName);
-    const buf = data instanceof Uint8Array ? data : new TextEncoder().encode(String(data));
+    const raw = data instanceof Uint8Array ? data : new TextEncoder().encode(String(data));
+    // Copia para um ArrayBuffer "puro" (evita SharedArrayBuffer no tipo do BlobPart)
+    const buf = new Uint8Array(raw.byteLength);
+    buf.set(raw);
 
     // limpa arquivos virtuais
     try { await ff.deleteFile(inputName); } catch { /* ignore */ }
