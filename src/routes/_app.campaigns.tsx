@@ -79,9 +79,9 @@ interface WizardData {
   newAdvertiserName: string;
   file: File | null;
   previewUrl: string | null;
+  isVideo: boolean;
   name: string;
   duration_seconds: number;
-  priority: "gold" | "silver" | "bronze";
   start_date: string;
   end_date: string;
 }
@@ -91,9 +91,9 @@ const initialWizard: WizardData = {
   newAdvertiserName: "",
   file: null,
   previewUrl: null,
+  isVideo: false,
   name: "",
   duration_seconds: 15,
-  priority: "silver",
   start_date: new Date().toISOString().slice(0, 10),
   end_date: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
 };
@@ -107,6 +107,11 @@ function CampaignsPage() {
   const [step, setStep] = useState<StepIndex>(0);
   const [data, setData] = useState<WizardData>(initialWizard);
   const [submitting, setSubmitting] = useState(false);
+  const [transcodeStatus, setTranscodeStatus] = useState<{
+    active: boolean;
+    phase: "loading" | "transcoding" | "finalizing" | "uploading";
+    progress: number;
+  }>({ active: false, phase: "loading", progress: 0 });
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [previewMedia, setPreviewMedia] = useState<{ url: string; isVideo: boolean; name: string } | null>(null);
   const [editing, setEditing] = useState<Campaign | null>(null);
@@ -114,7 +119,6 @@ function CampaignsPage() {
     name: "",
     advertiser_id: "",
     status: "active" as "active" | "paused" | "completed",
-    priority: "silver" as "gold" | "silver" | "bronze",
     start_date: "",
     end_date: "",
     duration_seconds: 15,
@@ -126,7 +130,6 @@ function CampaignsPage() {
       name: c.name ?? "",
       advertiser_id: c.advertiser_id ?? "",
       status: ((c.status as "active" | "paused" | "completed") ?? "active"),
-      priority: ((c.priority as "gold" | "silver" | "bronze") ?? "silver"),
       start_date: c.start_date ?? "",
       end_date: c.end_date ?? "",
       duration_seconds: c.duration_seconds ?? 15,
@@ -142,7 +145,6 @@ function CampaignsPage() {
           name: editForm.name.trim(),
           advertiser_id: editForm.advertiser_id || null,
           status: editForm.status,
-          priority: editForm.priority,
           start_date: editForm.start_date,
           end_date: editForm.end_date,
           duration_seconds: editForm.duration_seconds,
@@ -207,19 +209,46 @@ function CampaignsPage() {
     resetWizard();
   };
 
-  const handleFile = (e: ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
+  const acceptFile = (f: File) => {
     if (!f.type.startsWith("image/") && !f.type.startsWith("video/")) {
       toast.error("Use uma imagem ou vídeo");
       return;
     }
+    const isVideo = f.type.startsWith("video/");
+    const previewUrl = URL.createObjectURL(f);
+
     setData((d) => ({
       ...d,
       file: f,
-      previewUrl: URL.createObjectURL(f),
+      previewUrl,
+      isVideo,
       name: d.name || f.name.replace(/\.[^.]+$/, ""),
     }));
+
+    // Para vídeo: lê a duração real do arquivo automaticamente
+    if (isVideo) {
+      const v = document.createElement("video");
+      v.preload = "metadata";
+      v.src = previewUrl;
+      v.onloadedmetadata = () => {
+        const secs = Math.max(1, Math.round(v.duration || 0));
+        if (secs > 0) {
+          setData((d) => ({ ...d, duration_seconds: secs }));
+        }
+      };
+    }
+  };
+
+  const handleFile = (e: ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (f) acceptFile(f);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLLabelElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const f = e.dataTransfer.files?.[0];
+    if (f) acceptFile(f);
   };
 
   const canAdvance = (): boolean => {
@@ -244,14 +273,33 @@ function CampaignsPage() {
         advertiserId = created.id;
       }
 
-      const url = await uploadToWorker(data.file!);
+      // Otimização: se for vídeo, converte para MP4 H.264 720p (~1.5 Mbps)
+      // antes do upload, para rodar suave em TV Box mais fracas.
+      let fileToUpload = data.file!;
+      if (fileToUpload.type.startsWith("video/")) {
+        try {
+          setTranscodeStatus({ active: true, phase: "loading", progress: 0 });
+          const optimized = await transcodeVideoFor720p(fileToUpload, (info) => {
+            setTranscodeStatus({ active: true, ...info });
+          });
+          fileToUpload = optimized;
+        } catch (err) {
+          console.error("Falha na otimização do vídeo:", err);
+          toast.warning(
+            "Não foi possível otimizar o vídeo neste navegador. Enviando o arquivo original.",
+          );
+        }
+      }
+
+      setTranscodeStatus({ active: true, phase: "uploading", progress: 0 });
+      const url = await uploadToWorker(fileToUpload);
 
       const { error: insertErr } = await supabase.from("campaigns").insert({
         user_id: userId,
         advertiser_id: advertiserId || null,
         name: data.name.trim(),
         media_url: url,
-        priority: data.priority,
+        
         start_date: data.start_date,
         end_date: data.end_date,
         duration_seconds: data.duration_seconds,
@@ -267,6 +315,7 @@ function CampaignsPage() {
       toast.error(e instanceof Error ? e.message : "Erro ao criar campanha");
     } finally {
       setSubmitting(false);
+      setTranscodeStatus({ active: false, phase: "loading", progress: 0 });
     }
   };
 
@@ -303,7 +352,14 @@ function CampaignsPage() {
             return (
             <Card key={c.id} className="overflow-hidden transition-shadow hover:shadow-soft">
               {c.media_url && (
-                <div className="hidden aspect-video w-full overflow-hidden bg-muted sm:block">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setPreviewMedia({ url: c.media_url!, isVideo, name: c.name })
+                  }
+                  className="group relative hidden aspect-video w-full overflow-hidden bg-muted sm:block"
+                  aria-label={`Abrir ${isVideo ? "vídeo" : "imagem"} de ${c.name}`}
+                >
                   {isVideo ? (
                     <video src={c.media_url} className="h-full w-full object-cover" muted />
                   ) : (
@@ -313,7 +369,16 @@ function CampaignsPage() {
                       className="h-full w-full object-cover"
                     />
                   )}
-                </div>
+                  <span className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors group-hover:bg-black/40">
+                    <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white/90 text-foreground opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                      {isVideo ? (
+                        <Video className="h-5 w-5" />
+                      ) : (
+                        <ImageIcon className="h-5 w-5" />
+                      )}
+                    </span>
+                  </span>
+                </button>
               )}
               <CardContent className="p-5">
                 <div className="flex items-start justify-between gap-2">
@@ -493,9 +558,20 @@ function CampaignsPage() {
                   title="Envie a mídia"
                   description="Imagem (JPG/PNG) ou vídeo (MP4). Será armazenada com segurança."
                 />
-                <label className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed bg-muted/30 p-10 text-center hover:border-primary hover:bg-primary/5">
+                <label
+                  className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed bg-muted/30 p-10 text-center transition-colors hover:border-primary hover:bg-primary/5"
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  onDragEnter={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  onDrop={handleDrop}
+                >
                   {data.previewUrl ? (
-                    data.file?.type.startsWith("video/") ? (
+                    data.isVideo ? (
                       <video
                         src={data.previewUrl}
                         className="max-h-48 rounded-lg"
@@ -541,7 +617,11 @@ function CampaignsPage() {
                 <StepIntro
                   icon={Pencil}
                   title="Detalhes da campanha"
-                  description="Defina nome, prioridade e tempo de exibição por loop."
+                  description={
+                    data.isVideo
+                      ? "Defina o nome da campanha. A duração foi detectada do vídeo."
+                      : "Defina nome e tempo de exibição por loop."
+                  }
                 />
                 <div className="space-y-2">
                   <Label>Nome da campanha</Label>
@@ -551,7 +631,14 @@ function CampaignsPage() {
                     placeholder="Ex.: Promoção de Verão"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                {data.isVideo ? (
+                  <div className="rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
+                    Duração detectada do vídeo:{" "}
+                    <strong className="text-foreground">
+                      {data.duration_seconds}s
+                    </strong>
+                  </div>
+                ) : (
                   <div className="space-y-2">
                     <Label>Duração (segundos)</Label>
                     <Input
@@ -566,25 +653,7 @@ function CampaignsPage() {
                       }
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label>Prioridade</Label>
-                    <Select
-                      value={data.priority}
-                      onValueChange={(v) =>
-                        setData((d) => ({ ...d, priority: v as WizardData["priority"] }))
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="gold">🥇 Ouro</SelectItem>
-                        <SelectItem value="silver">🥈 Prata</SelectItem>
-                        <SelectItem value="bronze">🥉 Bronze</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+                )}
               </div>
             )}
 
@@ -635,13 +704,43 @@ function CampaignsPage() {
                     </li>
                     <li>
                       <strong className="text-foreground">Duração:</strong>{" "}
-                      {data.duration_seconds}s · Prioridade {data.priority}
+                      {data.duration_seconds}s
                     </li>
                   </ul>
                 </div>
               </div>
             )}
           </div>
+
+          {transcodeStatus.active && (
+            <div className="mt-4 rounded-lg border bg-muted/40 p-3">
+              <div className="mb-2 flex items-center justify-between text-xs font-medium">
+                <span className="flex items-center gap-2">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  {transcodeStatus.phase === "loading" && "Carregando otimizador…"}
+                  {transcodeStatus.phase === "transcoding" && "Otimizando vídeo para 720p…"}
+                  {transcodeStatus.phase === "finalizing" && "Finalizando otimização…"}
+                  {transcodeStatus.phase === "uploading" && "Enviando para o servidor…"}
+                </span>
+                {transcodeStatus.phase === "transcoding" && (
+                  <span className="tabular-nums text-muted-foreground">
+                    {Math.round(transcodeStatus.progress * 100)}%
+                  </span>
+                )}
+              </div>
+              <Progress
+                value={
+                  transcodeStatus.phase === "uploading"
+                    ? undefined
+                    : transcodeStatus.progress * 100
+                }
+                className="h-1.5"
+              />
+              <p className="mt-2 text-[11px] text-muted-foreground">
+                Convertendo para MP4 H.264 720p (~1.5 Mbps) — ideal para TV Box.
+              </p>
+            </div>
+          )}
 
           <div className="mt-6 flex items-center justify-between gap-2">
             <Button
@@ -767,43 +866,23 @@ function CampaignsPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label>Status</Label>
-                <Select
-                  value={editForm.status}
-                  onValueChange={(v) =>
-                    setEditForm((f) => ({ ...f, status: v as typeof f.status }))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="active">Ativa</SelectItem>
-                    <SelectItem value="paused">Pausada</SelectItem>
-                    <SelectItem value="completed">Concluída</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Prioridade</Label>
-                <Select
-                  value={editForm.priority}
-                  onValueChange={(v) =>
-                    setEditForm((f) => ({ ...f, priority: v as typeof f.priority }))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="gold">🥇 Ouro</SelectItem>
-                    <SelectItem value="silver">🥈 Prata</SelectItem>
-                    <SelectItem value="bronze">🥉 Bronze</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="space-y-2">
+              <Label>Status</Label>
+              <Select
+                value={editForm.status}
+                onValueChange={(v) =>
+                  setEditForm((f) => ({ ...f, status: v as typeof f.status }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Ativa</SelectItem>
+                  <SelectItem value="paused">Pausada</SelectItem>
+                  <SelectItem value="completed">Concluída</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
