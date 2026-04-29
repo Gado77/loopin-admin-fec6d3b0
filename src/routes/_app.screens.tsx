@@ -74,14 +74,14 @@ interface Screen {
 type Orientation =
   | "landscape"
   | "portrait"
-  | "landscape_inverted"
-  | "portrait_inverted";
+  | "landscape-flipped"
+  | "portrait-flipped";
 
 const ORIENTATION_LABELS: Record<Orientation, string> = {
   landscape: "Horizontal",
   portrait: "Vertical",
-  landscape_inverted: "Horizontal invertida",
-  portrait_inverted: "Vertical invertida",
+  "landscape-flipped": "Horizontal invertida",
+  "portrait-flipped": "Vertical invertida",
 };
 
 interface ScreenFormData {
@@ -474,10 +474,10 @@ function ScreensPage() {
                   <SelectContent>
                     <SelectItem value="landscape">Horizontal</SelectItem>
                     <SelectItem value="portrait">Vertical</SelectItem>
-                    <SelectItem value="landscape_inverted">
+                    <SelectItem value="landscape-flipped">
                       Horizontal invertida
                     </SelectItem>
-                    <SelectItem value="portrait_inverted">
+                    <SelectItem value="portrait-flipped">
                       Vertical invertida
                     </SelectItem>
                   </SelectContent>

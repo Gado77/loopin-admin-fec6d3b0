@@ -48,8 +48,8 @@ interface PlayerLog {
 const ORIENTATION_LABEL: Record<string, string> = {
   landscape: "Horizontal",
   portrait: "Vertical",
-  landscape_inverted: "Horizontal invertida",
-  portrait_inverted: "Vertical invertida",
+  "landscape-flipped": "Horizontal invertida",
+  "portrait-flipped": "Vertical invertida",
 };
 
 const CACHE_LIMIT_MB = 500;
