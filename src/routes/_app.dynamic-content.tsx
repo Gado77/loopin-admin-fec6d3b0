@@ -9,6 +9,8 @@ import {
   Newspaper,
   Type,
   Code2,
+  TrendingUp,
+  Pencil,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
@@ -51,7 +53,7 @@ export const Route = createFileRoute("/_app/dynamic-content")({
   head: () => ({ meta: [{ title: "Conteúdo Dinâmico — Loopin TV" }] }),
 });
 
-type ContentType = "weather" | "news" | "ticker" | "html";
+type ContentType = "weather" | "news" | "economy" | "ticker" | "html";
 
 interface DynamicContent {
   id: string;
@@ -70,27 +72,34 @@ interface FormState {
   // weather
   city: string;
   weatherInterval: number;
-  // news
-  newsCategory: string;
-  newsInterval: number;
   // ticker
   tickerText: string;
   tickerSpeed: number;
   // html
   html: string;
+  // economy
+  economySource: string;
+  showCrypto: boolean;
+  showCurrencies: boolean;
+  showStock: boolean;
+  // news
+  newsSource: string;
 }
 
 const empty: FormState = {
   name: "",
   content_type: "weather",
   is_active: true,
-  city: "São José dos Pinhais, BR",
+  city: "São José do Piauí, BR",
   weatherInterval: 30,
-  newsCategory: "general",
-  newsInterval: 60,
   tickerText: "",
   tickerSpeed: 50,
   html: "",
+  economySource: "times_brasil",
+  showCrypto: true,
+  showCurrencies: true,
+  showStock: true,
+  newsSource: "geral",
 };
 
 const TYPE_META: Record<
@@ -99,12 +108,14 @@ const TYPE_META: Record<
 > = {
   weather: { label: "Clima", icon: Cloud, color: "bg-sky-500/10 text-sky-700 dark:text-sky-300" },
   news: { label: "Notícias", icon: Newspaper, color: "bg-amber-500/10 text-amber-700 dark:text-amber-300" },
+  economy: { label: "Mercado Financeiro", icon: TrendingUp, color: "bg-green-500/10 text-green-700 dark:text-green-300" },
   ticker: { label: "Ticker", icon: Type, color: "bg-violet-500/10 text-violet-700 dark:text-violet-300" },
   html: { label: "HTML Custom", icon: Code2, color: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" },
 };
 
 const BRAZILIAN_CITIES = [
-  { value: "São José dos Pinhais, BR", label: "São José dos Pinhais - PR" },
+  { value: "São José do Piauí, BR", label: "São José do Piauí - PI" },
+  { value: "Teresina, BR", label: "Teresina - PI" },
   { value: "São Paulo, BR", label: "São Paulo - SP" },
   { value: "Rio de Janeiro, BR", label: "Rio de Janeiro - RJ" },
   { value: "Belo Horizonte, BR", label: "Belo Horizonte - MG" },
@@ -112,20 +123,20 @@ const BRAZILIAN_CITIES = [
   { value: "Salvador, BR", label: "Salvador - BA" },
   { value: "Fortaleza, BR", label: "Fortaleza - CE" },
   { value: "Recife, BR", label: "Recife - PE" },
+  { value: "São Luís, BR", label: "São Luís - MA" },
   { value: "Porto Alegre, BR", label: "Porto Alegre - RS" },
   { value: "Curitiba, BR", label: "Curitiba - PR" },
   { value: "Manaus, BR", label: "Manaus - AM" },
   { value: "Natal, BR", label: "Natal - RN" },
   { value: "João Pessoa, BR", label: "João Pessoa - PB" },
-  { value: "Florianópolis, BR", label: "Florianópolis - SC" },
-  { value: "Cuiabá, BR", label: "Cuiabá - MT" },
   { value: "Goiânia, BR", label: "Goiânia - GO" },
 ];
 
 function buildConfig(f: FormState) {
   if (f.content_type === "weather") return { city: f.city, interval: f.weatherInterval };
-  if (f.content_type === "news") return { category: f.newsCategory, interval: f.newsInterval };
+  if (f.content_type === "news") return { source: f.newsSource };
   if (f.content_type === "ticker") return { text: f.tickerText, speed: f.tickerSpeed };
+  if (f.content_type === "economy") return { source: f.economySource, showCrypto: f.showCrypto, showCurrencies: f.showCurrencies, showStock: f.showStock };
   if (f.content_type === "html") return { html: f.html };
   return {};
 }
@@ -138,6 +149,7 @@ function DynamicContentPage() {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<FormState>(empty);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["dynamic-contents", userId],
@@ -154,21 +166,34 @@ function DynamicContentPage() {
 
   const saveMutation = useMutation({
     mutationFn: async (input: FormState) => {
-      const { error } = await supabase.from("dynamic_contents").insert({
-        user_id: userId,
+      const payload = {
         name: input.name.trim(),
         content_type: input.content_type,
         configuration: buildConfig(input),
         is_active: input.is_active,
-      });
-      if (error) throw error;
+      };
+
+      if (editingId) {
+        const { error } = await supabase
+          .from("dynamic_contents")
+          .update(payload)
+          .eq("id", editingId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("dynamic_contents").insert({
+          user_id: userId,
+          ...payload,
+        });
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["dynamic-contents", userId] });
       qc.invalidateQueries({ queryKey: ["library", userId] });
-      toast.success("Widget criado");
+      toast.success(editingId ? "Widget atualizado" : "Widget criado");
       setOpen(false);
       setForm(empty);
+      setEditingId(null);
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -207,6 +232,7 @@ function DynamicContentPage() {
         action={
           <Button
             onClick={() => {
+              setEditingId(null);
               setForm(empty);
               setOpen(true);
             }}
@@ -224,7 +250,11 @@ function DynamicContentPage() {
           title="Nenhum widget criado"
           description="Adicione widgets dinâmicos para enriquecer suas playlists."
           actionLabel="Criar primeiro widget"
-          onAction={() => setOpen(true)}
+          onAction={() => {
+            setEditingId(null);
+            setForm(empty);
+            setOpen(true);
+          }}
         />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -257,7 +287,10 @@ function DynamicContentPage() {
                       <p>Cidade: <span className="text-foreground">{cfg.city ?? "—"}</span></p>
                     )}
                     {w.content_type === "news" && (
-                      <p>Categoria: <span className="text-foreground">{cfg.category ?? "—"}</span></p>
+                      <p>Notícias • <span className="text-foreground">{cfg.source === 'economia' ? 'Economia' : cfg.source === 'esportes' ? 'Esportes' : cfg.source === 'tecnologia' ? 'Tecnologia' : 'Geral'}</span></p>
+                    )}
+                    {w.content_type === "economy" && (
+                      <p>Fonte: <span className="text-foreground">{cfg.source === 'times_brasil' ? 'Times Brasil' : cfg.source}</span></p>
                     )}
                     {w.content_type === "ticker" && (
                       <p className="line-clamp-2">"{cfg.text ?? "—"}"</p>
@@ -266,7 +299,32 @@ function DynamicContentPage() {
                       <p>HTML personalizado ({String(cfg.html ?? "").length} caracteres)</p>
                     )}
                   </div>
-                  <div className="mt-4 flex justify-end">
+                  <div className="mt-4 flex justify-end gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setEditingId(w.id);
+                        setForm({
+                          name: w.name,
+                          content_type: w.content_type,
+                          is_active: w.is_active,
+                          city: cfg.city ?? empty.city,
+                          weatherInterval: cfg.interval ?? empty.weatherInterval,
+                          tickerText: cfg.text ?? empty.tickerText,
+                          tickerSpeed: cfg.speed ?? empty.tickerSpeed,
+                          html: cfg.html ?? empty.html,
+                          newsSource: cfg.source ?? empty.newsSource,
+                          economySource: cfg.source ?? empty.economySource,
+                          showCrypto: cfg.showCrypto ?? empty.showCrypto,
+                          showCurrencies: cfg.showCurrencies ?? empty.showCurrencies,
+                          showStock: cfg.showStock ?? empty.showStock,
+                        });
+                        setOpen(true);
+                      }}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -283,10 +341,13 @@ function DynamicContentPage() {
         </div>
       )}
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={(o) => {
+        setOpen(o);
+        if (!o) setEditingId(null);
+      }}>
         <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Novo widget</DialogTitle>
+            <DialogTitle>{editingId ? "Editar widget" : "Novo widget"}</DialogTitle>
           </DialogHeader>
           <form
             onSubmit={(e) => {
@@ -319,6 +380,7 @@ function DynamicContentPage() {
                 <SelectContent>
                   <SelectItem value="weather">🌤️ Clima</SelectItem>
                   <SelectItem value="news">📰 Notícias</SelectItem>
+                  <SelectItem value="economy">📈 Mercado Financeiro</SelectItem>
                   <SelectItem value="ticker">📝 Ticker (Letreiro)</SelectItem>
                   <SelectItem value="html">💻 HTML Custom</SelectItem>
                 </SelectContent>
@@ -360,35 +422,72 @@ function DynamicContentPage() {
             )}
 
             {form.content_type === "news" && (
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Categoria</Label>
+                  <Label>Categoria da Notícia</Label>
                   <Select
-                    value={form.newsCategory}
-                    onValueChange={(v) => setForm((f) => ({ ...f, newsCategory: v }))}
+                    value={form.newsSource}
+                    onValueChange={(v) => setForm((f) => ({ ...f, newsSource: v }))}
                   >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="general">Geral</SelectItem>
-                      <SelectItem value="business">Negócios</SelectItem>
-                      <SelectItem value="technology">Tecnologia</SelectItem>
-                      <SelectItem value="sports">Esportes</SelectItem>
-                      <SelectItem value="entertainment">Entretenimento</SelectItem>
+                      <SelectItem value="geral">Geral (Misto)</SelectItem>
+                      <SelectItem value="economia">Economia</SelectItem>
+                      <SelectItem value="tecnologia">Tecnologia</SelectItem>
+                      <SelectItem value="esportes">Esportes</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">
+                  Notícias curadas automaticamente. Atualização a cada hora.
+                </div>
+              </div>
+            )}
+
+            {form.content_type === "economy" && (
+              <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Atualizar a cada (min)</Label>
-                  <Input
-                    type="number"
-                    min={5}
-                    value={form.newsInterval}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, newsInterval: +e.target.value || 60 }))
-                    }
-                  />
+                  <Label>Fonte de Dados</Label>
+                  <Select
+                    value={form.economySource}
+                    onValueChange={(v) => setForm((f) => ({ ...f, economySource: v }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="times_brasil">Times Brasil</SelectItem>
+                      <SelectItem value="yahoo_finance">Yahoo Finance</SelectItem>
+                      <SelectItem value="infomoney">InfoMoney</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-3">
+                  <Label>O que exibir?</Label>
+                  <div className="flex items-center justify-between rounded-lg border p-3">
+                    <Label className="text-sm font-normal">Câmbio (Dólar, Euro)</Label>
+                    <Switch
+                      checked={form.showCurrencies}
+                      onCheckedChange={(v) => setForm((f) => ({ ...f, showCurrencies: v }))}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between rounded-lg border p-3">
+                    <Label className="text-sm font-normal">Criptomoedas (Bitcoin, Ethereum)</Label>
+                    <Switch
+                      checked={form.showCrypto}
+                      onCheckedChange={(v) => setForm((f) => ({ ...f, showCrypto: v }))}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between rounded-lg border p-3">
+                    <Label className="text-sm font-normal">Bolsa de Valores (Ibovespa)</Label>
+                    <Switch
+                      checked={form.showStock}
+                      onCheckedChange={(v) => setForm((f) => ({ ...f, showStock: v }))}
+                    />
+                  </div>
                 </div>
               </div>
             )}
