@@ -287,7 +287,7 @@ function DynamicContentPage() {
                       <p>Cidade: <span className="text-foreground">{cfg.city ?? "—"}</span></p>
                     )}
                     {w.content_type === "news" && (
-                      <p>Notícias • <span className="text-foreground">{cfg.source === 'economia' ? 'Economia' : cfg.source === 'esportes' ? 'Esportes' : cfg.source === 'tecnologia' ? 'Tecnologia' : 'Geral'}</span></p>
+                      <p>Notícias • <span className="text-foreground">{cfg.source === 'g1' ? 'G1 (Globo)' : cfg.source === 'uol' ? 'UOL' : cfg.source === 'cnn' ? 'CNN Brasil' : cfg.source === 'infomoney' ? 'InfoMoney' : cfg.source === 'agbrasil' ? 'Agência Brasil' : 'Geral'}</span></p>
                     )}
                     {w.content_type === "economy" && (
                       <p>Fonte: <span className="text-foreground">{cfg.source === 'times_brasil' ? 'Times Brasil' : cfg.source}</span></p>
@@ -424,7 +424,7 @@ function DynamicContentPage() {
             {form.content_type === "news" && (
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Categoria da Notícia</Label>
+                  <Label>Fonte Jornalística</Label>
                   <Select
                     value={form.newsSource}
                     onValueChange={(v) => setForm((f) => ({ ...f, newsSource: v }))}
@@ -433,10 +433,11 @@ function DynamicContentPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="geral">Geral (Misto)</SelectItem>
-                      <SelectItem value="economia">Economia</SelectItem>
-                      <SelectItem value="tecnologia">Tecnologia</SelectItem>
-                      <SelectItem value="esportes">Esportes</SelectItem>
+                      <SelectItem value="g1">G1 (Globo)</SelectItem>
+                      <SelectItem value="uol">UOL Notícias</SelectItem>
+                      <SelectItem value="cnn">CNN Brasil</SelectItem>
+                      <SelectItem value="infomoney">InfoMoney</SelectItem>
+                      <SelectItem value="agbrasil">Agência Brasil</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
