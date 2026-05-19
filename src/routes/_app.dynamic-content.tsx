@@ -99,7 +99,7 @@ const empty: FormState = {
   showCrypto: true,
   showCurrencies: true,
   showStock: true,
-  newsSource: "geral",
+  newsSource: "g1",
 };
 
 const TYPE_META: Record<

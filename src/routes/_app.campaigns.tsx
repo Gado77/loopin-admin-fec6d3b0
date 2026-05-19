@@ -68,6 +68,7 @@ interface Campaign {
   end_date: string | null;
   duration_seconds: number | null;
   media_url: string | null;
+  media_type: string | null;
   advertiser_id: string | null;
   advertisers?: { name: string } | null;
 }
@@ -285,7 +286,7 @@ let fileToUpload = data.file!;
         advertiser_id: advertiserId || null,
         name: data.name.trim(),
         media_url: url,
-        
+        media_type: data.isVideo ? "video" : "image",
         start_date: data.start_date,
         end_date: data.end_date,
         duration_seconds: data.duration_seconds,
@@ -334,7 +335,7 @@ let fileToUpload = data.file!;
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {(campaignsQuery.data ?? []).map((c) => {
-            const isVideo = c.media_url ? /\.(mp4|webm|mov)$/i.test(c.media_url) : false;
+            const isVideo = c.media_type === "video" || (c.media_url ? /\.(mp4|webm|mov)$/i.test(c.media_url) : false);
             return (
             <Card key={c.id} className="overflow-hidden transition-shadow hover:shadow-soft">
               {c.media_url && (
